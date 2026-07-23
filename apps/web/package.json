@@ -1,0 +1,9 @@
+{
+  "name": "@dirtcar-drift/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"apps/web not scaffolded yet — Phase 3 runs: npm create vite@latest . -- --template react\" && exit 1"
+  }
+}

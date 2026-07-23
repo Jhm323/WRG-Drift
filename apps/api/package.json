@@ -1,0 +1,9 @@
+{
+  "name": "@dirtcar-drift/api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"apps/api not scaffolded yet — Phase 1 installs express, prisma, etc.\" && exit 1"
+  }
+}

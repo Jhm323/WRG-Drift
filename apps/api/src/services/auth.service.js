@@ -1,0 +1,114 @@
+import bcrypt from 'bcrypt';
+import crypto from 'node:crypto';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../lib/prisma.js';
+import { HttpError } from '../lib/http-error.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from './email.service.js';
+
+const DIRTCAR_DOMAIN = '@dirtcar.com';
+const PASSWORD_HASH_ROUNDS = 12;
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
+export const JWT_COOKIE_NAME = 'token';
+export const JWT_EXPIRY = '30d';
+export const JWT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+function assertDirtcarEmail(email) {
+  if (!email.toLowerCase().endsWith(DIRTCAR_DOMAIN)) {
+    throw new HttpError(400, `Email must be a ${DIRTCAR_DOMAIN} address`);
+  }
+}
+
+export async function signup({ email, password, displayName, avatarUrl }) {
+  assertDirtcarEmail(email);
+
+  const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        passwordHash,
+        displayName,
+        avatarUrl,
+        verificationToken,
+      },
+    });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      throw new HttpError(409, 'An account with that email already exists');
+    }
+    throw error;
+  }
+
+  await sendVerificationEmail({ to: user.email, token: verificationToken });
+
+  return { id: user.id, email: user.email, displayName: user.displayName };
+}
+
+export async function verifyEmail(token) {
+  const user = token ? await prisma.user.findUnique({ where: { verificationToken: token } }) : null;
+  if (!user) {
+    throw new HttpError(400, 'Invalid or expired verification link');
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerified: true, verificationToken: null },
+  });
+}
+
+export async function login({ email, password }) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    throw new HttpError(401, 'Invalid email or password');
+  }
+
+  if (!user.emailVerified) {
+    throw new HttpError(403, 'Please verify your email before logging in');
+  }
+
+  const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRY });
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    },
+  };
+}
+
+export async function requestPasswordReset(email) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  // Resolve silently either way so this endpoint can't be used to test which emails have accounts.
+  if (!user) return;
+
+  const passwordResetToken = crypto.randomBytes(32).toString('hex');
+  const passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordResetToken, passwordResetExpiresAt },
+  });
+
+  await sendPasswordResetEmail({ to: user.email, token: passwordResetToken });
+}
+
+export async function resetPassword({ token, newPassword }) {
+  const user = await prisma.user.findUnique({ where: { passwordResetToken: token } });
+  if (!user || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
+    throw new HttpError(400, 'Invalid or expired reset link');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, PASSWORD_HASH_ROUNDS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash, passwordResetToken: null, passwordResetExpiresAt: null },
+  });
+}

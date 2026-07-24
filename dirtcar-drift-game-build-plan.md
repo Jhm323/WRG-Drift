@@ -281,12 +281,32 @@ Claude Code prompt:
 
 ### Phase 1 — Backend skeleton + DB
 ```bash
+# Local dev DB — Homebrew Postgres (not Docker, not `npx prisma dev`)
+brew install postgresql@16
+brew services start postgresql@16
+createdb dirtcar_drift_dev
+
 cd apps/api
 npm init -y
-npm install express prisma @prisma/client bcrypt jsonwebtoken zod cors dotenv
+npm install express prisma @prisma/client @prisma/adapter-pg pg bcrypt jsonwebtoken zod cors dotenv
 npm install -D nodemon
-npx prisma init
+npx prisma init --datasource-provider postgresql
 ```
+
+**Prisma 7 notes (this stack pins to Prisma 7, not the 5/6-era API a lot of
+older tutorials assume):**
+- `npx prisma dev` (Prisma's own bundled local Postgres) errored out under
+  newer Node versions — Homebrew Postgres is the reliable local option, so
+  that's the setup step above, not a Docker container or a hosted
+  `DATABASE_URL` handed to you.
+- Prisma 7 requires a **driver adapter** for SQL databases — there's no more
+  bare `DATABASE_URL` client. Install `@prisma/adapter-pg` + `pg` and wire
+  them through `src/lib/prisma.js`: construct `new PrismaPg({ connectionString:
+  process.env.DATABASE_URL })` and pass it as `new PrismaClient({ adapter })`.
+- The generated client (`generated/prisma/client.ts`) is **TypeScript**, not
+  plain JS. Node runs it directly via native type-stripping (Node 22.6+) —
+  no build step or ts-node needed, just `import` it from `.js` files as usual.
+
 Claude Code prompt:
 > "Create the Prisma schema for User, Track, Run, LeaderboardSnapshot as
 > described in [paste §4]. Add migration, seed script with 3 sample tracks.

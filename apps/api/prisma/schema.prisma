@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum LeaderboardPeriod {
+  weekly
+  monthly
+}
+
+model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  passwordHash           String    @map("password_hash")
+  displayName            String    @map("display_name")
+  avatarUrl              String    @map("avatar_url")
+  emailVerified          Boolean   @default(false) @map("email_verified")
+  verificationToken      String?   @unique @map("verification_token")
+  passwordResetToken     String?   @unique @map("password_reset_token")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  runs                 Run[]
+  leaderboardSnapshots LeaderboardSnapshot[]
+
+  @@map("users")
+}
+
+model Track {
+  id               String     @id
+  name             String
+  difficulty       Difficulty
+  pointsMultiplier Float      @map("points_multiplier")
+  config           Json
+
+  runs Run[]
+
+  @@map("tracks")
+}
+
+model Run {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  trackId        String   @map("track_id")
+  score          Int
+  gatesCleared   Int      @map("gates_cleared")
+  crashed        Boolean
+  durationMs     Int      @map("duration_ms")
+  playedAt       DateTime @default(now()) @map("played_at")
+  serverChecksum String   @map("server_checksum")
+
+  user  User  @relation(fields: [userId], references: [id])
+  track Track @relation(fields: [trackId], references: [id])
+
+  @@index([userId])
+  @@index([trackId])
+  @@index([playedAt])
+  @@map("runs")
+}
+
+model LeaderboardSnapshot {
+  id          String            @id @default(uuid())
+  period      LeaderboardPeriod
+  periodStart DateTime          @map("period_start")
+  periodEnd   DateTime          @map("period_end")
+  userId      String            @map("user_id")
+  bestScore   Int               @map("best_score")
+  rank        Int
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([period, periodStart, userId])
+  @@index([period, periodStart])
+  @@map("leaderboard_snapshots")
+}

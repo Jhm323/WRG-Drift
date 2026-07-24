@@ -15,15 +15,29 @@ npm workspaces monorepo:
 
 ## Status
 
-Phase 0 (repo scaffold) only. `apps/web` and `apps/api` are empty
-workspace placeholders — running their `dev` scripts will fail until
-their respective build phases are done.
+Phase 0 (repo scaffold) and Phase 1 (backend skeleton + DB) done.
+`apps/web` is still an empty workspace placeholder — its `dev` script
+will fail until Phase 3.
 
-## Dev commands (once later phases are built)
+## apps/api setup
+
+Requires a local PostgreSQL server (e.g. `brew install postgresql@16 && brew services start postgresql@16`).
+
+```bash
+cd apps/api
+cp .env.example .env    # then set DATABASE_URL to your local Postgres
+npm run prisma:migrate  # applies prisma/migrations, generates the client
+npm run prisma:seed     # loads the 3 sample tracks (oval-loop, figure-8, switchback-canyon)
+npm run dev              # starts the API on http://localhost:4000 (nodemon)
+```
+
+`GET /health` returns `{ "status": "ok" }` once the server is running.
+
+## Dev commands
 
 ```bash
 npm install          # install all workspaces
-npm run dev:web       # start the Vite dev server
+npm run dev:web       # start the Vite dev server (Phase 3+)
 npm run dev:api       # start the Express dev server
 npm run lint           # eslint across the monorepo
 npm run format          # prettier --write across the monorepo

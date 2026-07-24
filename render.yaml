@@ -1,0 +1,44 @@
+# Render Blueprint — creates the API web service + Postgres database
+# together. Deploy via Render's dashboard: New > Blueprint, point at this
+# repo. Commands run from the repo root (not apps/api) on purpose — this is
+# an npm workspaces monorepo, and @dirtcar-drift/shared only resolves
+# correctly when `npm install` runs at the root.
+#
+# Verify this against Render's current Blueprint spec at setup time —
+# written from documentation, not a live deploy.
+services:
+  - type: web
+    name: dirtcar-drift-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run prisma:generate --workspace apps/api && npm run prisma:migrate:deploy --workspace apps/api
+    startCommand: npm run start --workspace apps/api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dirtcar-drift-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SCORE_HMAC_SECRET
+        generateValue: true
+      # Set manually in the Render dashboard after the frontend/domain exist
+      # — see DEPLOY.md.
+      - key: CORS_ORIGIN
+        sync: false
+      - key: WEB_BASE_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+
+databases:
+  - name: dirtcar-drift-db
+    plan: free

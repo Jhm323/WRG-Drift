@@ -22,11 +22,25 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
+// Dev: frontend and API are same-site (Vite proxies /auth to the API), so
+// Lax + non-Secure works over plain HTTP. Production: Vercel (frontend) and
+// Render (API) are genuinely cross-origin — Lax cookies are never sent on
+// cross-site fetch/XHR, only top-level navigation, which would silently
+// break every authenticated request after login. None + Secure is required
+// for a cross-origin cookie to be sent at all, and None requires Secure
+// (HTTPS, which both platforms provide).
+function authCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
+  };
+}
+
 function setAuthCookie(res, token) {
   res.cookie(authService.JWT_COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    ...authCookieOptions(),
     maxAge: authService.JWT_MAX_AGE_MS,
   });
 }
@@ -48,7 +62,9 @@ export async function login(req, res) {
 }
 
 export function logout(req, res) {
-  res.clearCookie(authService.JWT_COOKIE_NAME);
+  // clearCookie must be called with matching attributes to the cookie that
+  // was set, or some browsers won't recognize it as the same cookie.
+  res.clearCookie(authService.JWT_COOKIE_NAME, authCookieOptions());
   res.status(204).end();
 }
 

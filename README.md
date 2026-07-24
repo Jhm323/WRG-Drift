@@ -15,11 +15,12 @@ npm workspaces monorepo:
 
 ## Status
 
-Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
-Phase 3 (frontend skeleton + auth UI), Phase 4 (game engine), Phase 5
-(GameCanvas + track select), Phase 6 (server-authoritative scoring),
-Phase 7 (leaderboards), and Phase 8 (polish/QA) done. Remaining: Phase 9
-(deploy).
+All 9 build-plan phases done. Phases 0–8 are built and verified; Phase 9
+(deploy) added the production build config, `render.yaml`, and
+[DEPLOY.md](DEPLOY.md) — actually creating the Vercel/Render projects and
+pointing DNS at them is a manual step for you to run, not something done
+from here (see DEPLOY.md for why, and for a cross-origin cookie bug it
+found and fixed along the way).
 
 ## apps/api setup
 

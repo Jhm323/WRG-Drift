@@ -4,6 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"apps/web not scaffolded yet — Phase 3 runs: npm create vite@latest . -- --template react\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.4",
+    "vite": "^8.1.5"
   }
 }

@@ -1,0 +1,29 @@
+:root {
+  --color-bg: #14161a;
+  --color-surface: #1e2126;
+  --color-text: #f2f2f2;
+  --color-text-muted: #9aa0a6;
+  --color-accent: #3a86ff;
+  --color-danger: #e63946;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+.app-main {
+  padding: 2rem 1.5rem;
+}

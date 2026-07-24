@@ -15,9 +15,9 @@ npm workspaces monorepo:
 
 ## Status
 
-Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), and Phase 2
-(auth) done. `apps/web` is still an empty workspace placeholder — its
-`dev` script will fail until Phase 3.
+Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
+and Phase 3 (frontend skeleton + auth UI) done. The game itself
+(`apps/web/src/game`) doesn't exist yet — that's Phase 4+.
 
 ## apps/api setup
 
@@ -52,11 +52,29 @@ verification/reset emails are logged to the server console instead of
 actually sent, so the whole flow is testable locally without a real Resend
 account. Set `RESEND_API_KEY` to send real email.
 
+## apps/web setup (Phase 3)
+
+```bash
+cd apps/web
+npm run dev   # starts Vite on http://localhost:5173
+```
+
+The Vite dev server proxies `/auth` and `/api` to `http://localhost:4000`
+(see `vite.config.js`), so the API must also be running — no CORS
+juggling needed in dev, cookies are same-origin through the proxy.
+
+Routes: `/login`, `/signup` are public. `/tracks`, `/play/:trackId`, and
+`/leaderboard` require a session — `ProtectedRoute` redirects to `/login`
+otherwise. `AuthContext`/`useAuth` (`src/context`, `src/hooks`) hold the
+session, backed by `GET /auth/me` on load. Track select, gameplay, and
+leaderboard pages are still placeholders — they're built out in Phases
+4–7.
+
 ## Dev commands
 
 ```bash
 npm install          # install all workspaces
-npm run dev:web       # start the Vite dev server (Phase 3+)
+npm run dev:web       # start the Vite dev server
 npm run dev:api       # start the Express dev server
 npm run lint           # eslint across the monorepo
 npm run format          # prettier --write across the monorepo

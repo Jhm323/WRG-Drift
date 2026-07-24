@@ -1,0 +1,26 @@
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  max-width: 240px;
+}
+
+.avatar-picker__option {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.avatar-picker__option--selected {
+  border-color: var(--color-accent, #3a86ff);
+}
+
+.avatar-picker__image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  display: block;
+}

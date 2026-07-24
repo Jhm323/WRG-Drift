@@ -20,7 +20,8 @@
 
 .leaderboard__tab--active {
   background: var(--color-accent);
-  color: #fff;
+  /* Dark text, not white — see LoginForm.css for why. */
+  color: var(--color-bg);
 }
 
 .leaderboard__status {

@@ -17,8 +17,8 @@ npm workspaces monorepo:
 
 Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
 Phase 3 (frontend skeleton + auth UI), Phase 4 (game engine), Phase 5
-(GameCanvas + track select), Phase 6 (server-authoritative scoring), and
-Phase 7 (leaderboards) done. Remaining: Phase 8 (polish/QA) and Phase 9
+(GameCanvas + track select), Phase 6 (server-authoritative scoring),
+Phase 7 (leaderboards), and Phase 8 (polish/QA) done. Remaining: Phase 9
 (deploy).
 
 ## apps/api setup
@@ -171,6 +171,44 @@ calling `announceWinners()`:
 `runRollover(period, referenceDate?)` is exported standalone, so it can be
 run manually without waiting for a real cron tick — useful for verifying
 this job in dev.
+
+## Polish & QA (Phase 8)
+
+- **Loading/error states**: `ProtectedRoute` now shows "Loading…" during
+  the initial session check instead of a blank page; logout
+  (`AuthContext.logout`) clears the local session even if the server call
+  fails, instead of leaving the user stuck; `PlayPage` shows "Saving…"
+  while a run submits, not just on failure. Login/signup forms and the
+  leaderboard already had loading/error/empty states from Phases 3 and 7.
+- **Responsive**: `AppHeader` didn't wrap at narrow widths — text wrapped
+  mid-word ("Log out" → "Log\nout") and clipped off-screen instead of the
+  row wrapping. Fixed with `flex-wrap` + `white-space: nowrap` on its
+  items; verified at 375px width (iPhone SE) across every page, no
+  horizontal overflow anywhere.
+- **Lighthouse** (production build, desktop preset, `/login`): Performance
+  100, Accessibility 100 (was 89 — fixed two WCAG contrast failures: white
+  text on the `--color-accent` button background only hit 3.48:1, switched
+  to dark text for 5.2:1; bare `<Link>`s had no color at all and fell back
+  to the browser's default link blue, nearly invisible on this dark theme
+  and failing contrast on its own — added a global `a { color:
+var(--color-accent) }`), Best Practices 96. SEO reads 63, entirely from
+  Lighthouse's `is-crawlable` check — this app added a `Disallow: /`
+  `robots.txt` on purpose (it's an internal tool behind auth; it should
+  never be indexed), so that "failure" is intentional, not a gap. Bundle:
+  ~251KB JS / ~80KB gzipped, sub-second FCP/LCP/TTI.
+- **Balance playtest**: scripted play (both a fixed click-lead-time bot and
+  a per-gate-adaptive one) across all three tracks surfaced a real bug, not
+  just a tuning gap — `figure-8` self-intersects, and `drift.js`'s gate
+  arc-length assignment (nearest-point projection onto the track polyline)
+  could snap a gate to a point on the _other_ loop of the curve, producing
+  out-of-order gate arrival and capping figure-8 at a hard 7/14 (50%)
+  regardless of skill. Fixed by windowing the search to a local
+  neighborhood ahead of the previous gate instead of searching the whole
+  curve — figure-8 now clears 13/14 (93%) with adaptive play, matching
+  oval-loop (100%) and switchback-canyon (94%). Since the fix lives in
+  `packages/shared`, both client and server picked it up automatically —
+  no track re-seed needed (unlike the Phase 4 slalom-offset fix, which
+  changed the actual gate data).
 
 ## Dev commands
 

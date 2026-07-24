@@ -25,8 +25,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await authApi.logout();
-    setUser(null);
+    try {
+      await authApi.logout();
+    } catch (error) {
+      // Clear the local session regardless — a failed logout call shouldn't
+      // leave the user stuck looking logged in with a dead "Log out" button.
+      console.error('Logout request failed', error);
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   return (

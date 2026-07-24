@@ -21,10 +21,19 @@ function buildCurveIndex(curve) {
   return { points: curve, cumulative, total: cumulative[cumulative.length - 1] };
 }
 
-function nearestArcLength(curveIndex, point) {
+// Nearest point to `point` on the curve polyline, restricted to segments
+// whose arc length falls in [minArcLength, maxArcLength]. That restriction
+// matters for self-intersecting curves (figure-8): an unrestricted
+// nearest-point search can snap a gate to a point on a *different* loop of
+// the curve that happens to pass close by — even just requiring "forward of
+// the previous gate" isn't enough, since the correct nearby crossing and a
+// wrong one a full loop later can both be "forward." Windowing to a local
+// neighborhood ahead of the previous gate picks the intended crossing.
+function nearestArcLength(curveIndex, point, minArcLength = 0, maxArcLength = Infinity) {
   const { points, cumulative } = curveIndex;
-  let best = { distSq: Infinity, arcLength: 0 };
+  let best = { distSq: Infinity, arcLength: minArcLength };
   for (let i = 0; i < points.length - 1; i += 1) {
+    if (cumulative[i + 1] < minArcLength || cumulative[i] > maxArcLength) continue;
     const p0 = points[i];
     const p1 = points[i + 1];
     const dx = p1.x - p0.x;
@@ -36,10 +45,10 @@ function nearestArcLength(curveIndex, point) {
     const projY = p0.y + dy * t;
     const distSq = (point.x - projX) ** 2 + (point.y - projY) ** 2;
     if (distSq < best.distSq) {
-      best = { distSq, arcLength: cumulative[i] + Math.hypot(dx, dy) * t };
+      best = { distSq, arcLength: Math.max(minArcLength, cumulative[i] + Math.hypot(dx, dy) * t) };
     }
   }
-  return best.arcLength;
+  return best;
 }
 
 // Position + tangent angle at a given distance along the track curve.
@@ -69,7 +78,21 @@ function poseAtArcLength(curveIndex, arcLength, hint = 0) {
 // Precomputed once per track (cheap to cache — the curve/gates never change).
 export function buildTrackIndex(track) {
   const curveIndex = buildCurveIndex(track.curve);
-  const gateArcLengths = track.gates.map((gate) => nearestArcLength(curveIndex, gate));
+  const averageGap = curveIndex.total / track.gates.length;
+  const searchWindow = averageGap * 4;
+
+  let searchFrom = 0;
+  const gateArcLengths = track.gates.map((gate) => {
+    let match = nearestArcLength(curveIndex, gate, searchFrom, searchFrom + searchWindow);
+    if (!(match.distSq < (searchWindow * 0.5) ** 2)) {
+      // No plausible match in the local window (unevenly spaced gates) —
+      // fall back to an unbounded forward search rather than accepting a
+      // clearly-wrong one.
+      match = nearestArcLength(curveIndex, gate, searchFrom);
+    }
+    searchFrom = match.arcLength;
+    return match.arcLength;
+  });
   return { curveIndex, gateArcLengths, totalLength: curveIndex.total };
 }
 

@@ -24,6 +24,23 @@ button {
   font-family: inherit;
 }
 
+/* Bare <Link>/<a> elements otherwise fall back to the browser's default
+   link blue, which reads as barely-visible navy-on-navy on this dark
+   theme and fails WCAG contrast. --color-accent already passes AA against
+   both --color-bg and --color-surface (5.2:1 / 4.64:1). */
+a {
+  color: var(--color-accent);
+}
+
+a:visited {
+  color: var(--color-accent);
+}
+
 .app-main {
   padding: 2rem 1.5rem;
+}
+
+.app-loading {
+  padding: 2rem 1.5rem;
+  color: var(--color-text-muted);
 }

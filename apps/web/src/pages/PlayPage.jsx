@@ -82,6 +82,7 @@ export function PlayPage() {
             {result.crashed ? 'Crashed!' : 'Finished!'} Final score {result.score} (
             {result.gatesCleared}/{result.gatesTotal} gates)
           </p>
+          {saveStatus === 'saving' && <p className="play-page__save-status">Saving…</p>}
           {saveStatus === 'failed' && (
             <p className="play-page__save-status">Could not save this run — score not recorded.</p>
           )}

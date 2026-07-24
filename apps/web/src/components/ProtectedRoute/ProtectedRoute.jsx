@@ -5,7 +5,7 @@ import { AppHeader } from '../AppHeader/AppHeader.jsx';
 export function ProtectedRoute() {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <p className="app-loading">Loading…</p>;
   if (!user) return <Navigate to="/login" replace />;
 
   return (

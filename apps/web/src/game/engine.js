@@ -2,8 +2,12 @@
 // live simulation every frame, and reports gate/crash/finish events via
 // callbacks. No React dependency — see test.html for a bare-HTML harness.
 
-import { buildTrackIndex, simulateRun } from './drift.js';
-import { scoreFromGateEvents, computeScore } from './scoring.js';
+import {
+  buildTrackIndex,
+  simulateRun,
+  scoreFromGateEvents,
+  computeScore,
+} from '@dirtcar-drift/shared';
 import { attachClickInput } from './input.js';
 
 // Deliberately independent of drift.js's TRACK_HALF_WIDTH_PX (the crash

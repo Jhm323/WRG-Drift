@@ -29,6 +29,12 @@
   font-weight: 600;
 }
 
+.play-page__save-status {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
 .play-page__actions {
   display: flex;
   gap: 1rem;

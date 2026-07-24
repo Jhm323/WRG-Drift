@@ -12,6 +12,7 @@ export function PlayPage() {
   const [runKey, setRunKey] = useState(0);
   const [live, setLive] = useState({ score: 0, gatesCleared: 0, gatesTotal: 0, elapsedMs: 0 });
   const [result, setResult] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'failed'
 
   const handleTick = useCallback((stats) => {
     setLive(stats);
@@ -20,10 +21,10 @@ export function PlayPage() {
   const handleRunEnd = useCallback(
     (payload, crashed) => {
       setResult({ ...payload, crashed });
-      submitRun({ trackId, clickTimestamps: payload.clickTimestamps }).catch(() => {
-        // Expected to fail until Phase 6 builds POST /api/v1/scores — the
-        // player still sees their client-computed result either way.
-      });
+      setSaveStatus('saving');
+      submitRun({ trackId, clickTimestamps: payload.clickTimestamps, score: payload.score })
+        .then(() => setSaveStatus('saved'))
+        .catch(() => setSaveStatus('failed'));
     },
     [trackId],
   );
@@ -33,6 +34,7 @@ export function PlayPage() {
 
   function playAgain() {
     setResult(null);
+    setSaveStatus(null);
     setLive({ score: 0, gatesCleared: 0, gatesTotal: 0, elapsedMs: 0 });
     setRunKey((key) => key + 1);
   }
@@ -80,6 +82,9 @@ export function PlayPage() {
             {result.crashed ? 'Crashed!' : 'Finished!'} Final score {result.score} (
             {result.gatesCleared}/{result.gatesTotal} gates)
           </p>
+          {saveStatus === 'failed' && (
+            <p className="play-page__save-status">Could not save this run — score not recorded.</p>
+          )}
           <div className="play-page__actions">
             <button type="button" onClick={playAgain}>
               Play again

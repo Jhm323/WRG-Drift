@@ -1,8 +1,9 @@
 // Pure scoring: given a track and the raw click timestamps for a run,
 // deterministically replay it (via drift.js) and return the point value.
 // No canvas, no DOM, no wall-clock reads — safe to run identically on the
-// client (live feedback) and, once moved to packages/shared in Phase 6, on
-// the server (authoritative anti-cheat recomputation, see build plan §7).
+// client (live feedback, apps/web/src/game/engine.js) and on the server
+// (authoritative anti-cheat recomputation, apps/api's scores service —
+// see build plan §7).
 
 import { buildTrackIndex, simulateRun } from './drift.js';
 

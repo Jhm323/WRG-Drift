@@ -1,8 +1,8 @@
 // Deterministic drift physics + simulation. Pure functions only — no
 // wall-clock reads, no randomness — so a run can be replayed exactly from
 // (track, clickTimestampsMs) alone. That's what makes scoring.js's
-// computeScore() safe to eventually run server-side as the anti-cheat
-// authority (see build plan §7): same inputs, same output, every time.
+// computeScore() safe to run server-side as the anti-cheat authority (see
+// build plan §7): same inputs, same output, every time.
 
 export const BASE_SPEED_PX_PER_S = 160;
 export const DRIFT_IMPULSE_PX = 75;

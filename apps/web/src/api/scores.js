@@ -1,12 +1,12 @@
 import { apiFetch } from './client.js';
 
-// Backend implementation lands in Phase 6 (POST /api/v1/scores recomputes
-// the score server-side from clickTimestamps — see build plan §6/§7). Until
-// then this 404s; callers should treat a failure here as "not saved yet",
-// not as a reason to hide the client-computed result from the player.
-export function submitRun({ trackId, clickTimestamps }) {
+// POST /api/v1/scores (Phase 6): the server recomputes the authoritative
+// score from trackId + clickTimestamps using the same shared scoring
+// function — `score` here is only sent as a tamper/drift check, never
+// trusted as the persisted value (build plan §7).
+export function submitRun({ trackId, clickTimestamps, score }) {
   return apiFetch('/api/v1/scores', {
     method: 'POST',
-    body: JSON.stringify({ trackId, clickTimestamps }),
+    body: JSON.stringify({ trackId, clickTimestamps, score }),
   });
 }

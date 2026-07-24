@@ -16,10 +16,10 @@ npm workspaces monorepo:
 ## Status
 
 Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
-Phase 3 (frontend skeleton + auth UI), Phase 4 (game engine), and Phase 5
-(GameCanvas + track select) done. Runs aren't persisted yet — scoring is
-computed correctly client-side, but `POST /api/v1/scores` doesn't exist
-on the backend until Phase 6, so submission 404s (handled gracefully).
+Phase 3 (frontend skeleton + auth UI), Phase 4 (game engine), Phase 5
+(GameCanvas + track select), and Phase 6 (server-authoritative scoring)
+done. Runs are persisted for real now. Leaderboards aren't built yet —
+that's Phase 7, so nothing reads the `Run` table back out yet.
 
 ## apps/api setup
 
@@ -79,16 +79,13 @@ anywhere in it:
 - `tracks/` — the 3 tracks (`oval-loop`, `figure-8`, `switchback-canyon`),
   generated with the same parametric math as `apps/api/prisma/seed.js` so
   the client-rendered shape matches what's in the DB under the same `id`.
-- `drift.js` — pure, deterministic simulation: `simulateRun(track, trackIndex, clickTimestampsMs, { stopAtMs })`
-  replays a run from `t=0` given only the recorded click timestamps. No
-  wall-clock reads, no randomness — same inputs always produce the same
-  output, which is what will let `scoring.js` become the server-side
-  anti-cheat authority once it moves to `packages/shared` in Phase 6.
-- `scoring.js` — `computeScore(track, clickTimestampsMs)`, pure, returns
-  `{ score, gatesCleared, gatesTotal, crashed, durationMs }` (maps directly
-  onto the `Run` model for Phase 6's `POST /api/v1/scores`).
 - `input.js` — click capture, `engine.js` — the `requestAnimationFrame`
   loop tying simulation + rendering + input together.
+
+`drift.js` (pure, deterministic simulation) and `scoring.js`
+(`computeScore(track, clickTimestampsMs)`, returns `{ score, gatesCleared,
+gatesTotal, crashed, durationMs }`) originally lived here too, but moved to
+`packages/shared` in Phase 6 — see below.
 
 Gates sit off the track centerline in an alternating slalom pattern —
 clicking is what steers the car toward each one. (The original Phase 1
@@ -116,10 +113,32 @@ cd apps/web && npm run dev
 - `pages/PlayPage.jsx` — looks up the track by the `:trackId` route param,
   renders `GameCanvas` with a live score/gates/time HUD, and on
   crash/finish shows the result with "Play again" (remounts `GameCanvas`
-  via a `key` bump) and "Back to tracks." Also POSTs `{ trackId,
-  clickTimestamps }` to `/api/v1/scores` — expected to 404 until Phase 6
-  builds that endpoint; failure is swallowed so the player's
-  client-computed result still displays either way.
+  via a `key` bump) and "Back to tracks." Also POSTs the run to
+  `/api/v1/scores` (Phase 6); a failure there is shown as a small "could
+  not save this run" note but never hides the player's own result.
+
+## Server-authoritative scoring (Phase 6)
+
+`drift.js` and `scoring.js` moved from `apps/web/src/game` into
+`packages/shared` (`@dirtcar-drift/shared`, linked via npm workspaces —
+`npm install` at the repo root symlinks it into both apps'
+`node_modules`) so the client and server run the exact same deterministic
+simulation.
+
+`POST /api/v1/scores` (`apps/api/src/routes/scores.routes.js`, requires
+auth) takes `{ trackId, clickTimestamps, score }`:
+
+1. Loads the `Track` row and recomputes the score server-side from
+   `clickTimestamps` via `computeScore()` — the authoritative result,
+   never the client's.
+2. If the client's `score` differs from the recomputed one by more than a
+   small tolerance, rejects with 400 (tampering or a client/server logic
+   mismatch — either way, don't persist it).
+3. Rate-limited to 1 submission per 3 seconds per user
+   (`middleware/rateLimit.middleware.js`, in-memory — fine at this scale).
+4. Persists the `Run` with a `serverChecksum` (HMAC via `SCORE_HMAC_SECRET`,
+   a separate secret from `JWT_SECRET` so rotating one doesn't invalidate
+   the other).
 
 ## Dev commands
 

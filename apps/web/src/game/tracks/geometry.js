@@ -1,14 +1,12 @@
-import 'dotenv/config';
-import { prisma } from '../src/lib/prisma.js';
+// Parametric generators for the 3 track shapes. Mirrors the math in
+// apps/api/prisma/seed.js so the client-rendered track matches the shape
+// stored server-side under the same trackId — same formulas, same output.
 
-// Parametric helpers — generate gate positions + a denser curve for rendering.
-// Mirrors apps/web/src/game/tracks/geometry.js, which the Phase 4 game engine
-// actually plays against — the DB and the client must agree on gate shape.
-
-// Gates sit off the centerline, alternating left/right, at slightly more than
-// their own radius — a car that never drifts (never clicked) always just
-// misses. Gates placed exactly on the centerline auto-clear with zero input,
-// which was the original (Phase 1) placement and made clicking pointless.
+// Gates sit off the centerline, alternating left/right, at slightly more
+// than their own radius — so a car sitting dead-center (i.e. never
+// clicked) always just misses. Without this, gates placed exactly on the
+// curve the car defaults to are auto-cleared with zero input, and
+// "click-to-drift through gates" stops meaning anything.
 const SLALOM_FACTOR = 1.25;
 
 function slalomOffset(pointAt, t, index, radius, epsilon = 1e-3) {
@@ -24,7 +22,7 @@ function slalomOffset(pointAt, t, index, radius, epsilon = 1e-3) {
   return { x: p0.x + nx * magnitude, y: p0.y + ny * magnitude, radius };
 }
 
-function ovalTrack() {
+export function ovalGeometry() {
   const cx = 400;
   const cy = 300;
   const rx = 300;
@@ -48,14 +46,13 @@ function ovalTrack() {
   return { gates, curve, parTimeMs: 28000 };
 }
 
-function figureEightTrack() {
+export function figureEightGeometry() {
   const cx = 400;
   const cy = 300;
   const a = 260;
   const gateCount = 14;
   const curvePoints = 80;
 
-  // Lemniscate of Bernoulli, traced as a single closed loop.
   const pointAt = (t) => {
     const denom = 1 + Math.sin(t) ** 2;
     return {
@@ -77,14 +74,13 @@ function figureEightTrack() {
   return { gates, curve, parTimeMs: 40000 };
 }
 
-function switchbackCanyonTrack() {
+export function switchbackCanyonGeometry() {
   const startX = 120;
   const startY = 500;
   const legLength = 90;
   const switchbackCount = 8;
   const gateCount = 18;
 
-  // Zigzag hairpin path climbing up a canyon wall.
   const anchors = [{ x: startX, y: startY }];
   let direction = 1;
   for (let i = 0; i < switchbackCount; i += 1) {
@@ -109,47 +105,3 @@ function switchbackCanyonTrack() {
 
   return { gates, curve, parTimeMs: 52000 };
 }
-
-const tracks = [
-  {
-    id: 'oval-loop',
-    name: 'Oval Loop',
-    difficulty: 'easy',
-    pointsMultiplier: 1.0,
-    config: ovalTrack(),
-  },
-  {
-    id: 'figure-8',
-    name: 'Figure-8',
-    difficulty: 'medium',
-    pointsMultiplier: 1.5,
-    config: figureEightTrack(),
-  },
-  {
-    id: 'switchback-canyon',
-    name: 'Switchback Canyon',
-    difficulty: 'hard',
-    pointsMultiplier: 2.0,
-    config: switchbackCanyonTrack(),
-  },
-];
-
-async function main() {
-  for (const track of tracks) {
-    await prisma.track.upsert({
-      where: { id: track.id },
-      update: track,
-      create: track,
-    });
-  }
-  console.log(`Seeded ${tracks.length} tracks.`);
-}
-
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

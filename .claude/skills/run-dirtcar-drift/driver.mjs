@@ -163,7 +163,9 @@ async function main() {
   }
 
   console.log(`Screenshots: ${SHOT_DIR}`);
-  console.log(`Console errors seen: ${consoleErrors.length} (401s from the pre-login /auth/me check are expected)`);
+  console.log(
+    `Console errors seen: ${consoleErrors.length} (401s from the pre-login /auth/me check are expected)`,
+  );
 
   cleanup();
   process.exit(failed ? 1 : 0);

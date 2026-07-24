@@ -16,8 +16,9 @@ npm workspaces monorepo:
 ## Status
 
 Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
-and Phase 3 (frontend skeleton + auth UI) done. The game itself
-(`apps/web/src/game`) doesn't exist yet — that's Phase 4+.
+Phase 3 (frontend skeleton + auth UI), and Phase 4 (game engine) done.
+The engine isn't wired into React/the track-select UI yet — that's
+Phase 5.
 
 ## apps/api setup
 
@@ -69,6 +70,38 @@ otherwise. `AuthContext`/`useAuth` (`src/context`, `src/hooks`) hold the
 session, backed by `GET /auth/me` on load. Track select, gameplay, and
 leaderboard pages are still placeholders — they're built out in Phases
 4–7.
+
+## Game engine (Phase 4)
+
+`apps/web/src/game` is a framework-agnostic canvas engine — no React import
+anywhere in it:
+
+- `tracks/` — the 3 tracks (`oval-loop`, `figure-8`, `switchback-canyon`),
+  generated with the same parametric math as `apps/api/prisma/seed.js` so
+  the client-rendered shape matches what's in the DB under the same `id`.
+- `drift.js` — pure, deterministic simulation: `simulateRun(track, trackIndex, clickTimestampsMs, { stopAtMs })`
+  replays a run from `t=0` given only the recorded click timestamps. No
+  wall-clock reads, no randomness — same inputs always produce the same
+  output, which is what will let `scoring.js` become the server-side
+  anti-cheat authority once it moves to `packages/shared` in Phase 6.
+- `scoring.js` — `computeScore(track, clickTimestampsMs)`, pure, returns
+  `{ score, gatesCleared, gatesTotal, crashed, durationMs }` (maps directly
+  onto the `Run` model for Phase 6's `POST /api/v1/scores`).
+- `input.js` — click capture, `engine.js` — the `requestAnimationFrame`
+  loop tying simulation + rendering + input together.
+
+Gates sit off the track centerline in an alternating slalom pattern —
+clicking is what steers the car toward each one. (The original Phase 1
+seed data placed gates exactly on the centerline, which meant a run with
+zero clicks auto-cleared everything; fixed in both `geometry.js` and
+`apps/api/prisma/seed.js`, then re-seeded.)
+
+Test it standalone, no React, no build step:
+
+```bash
+cd apps/web && npm run dev
+# open http://localhost:5173/test.html
+```
 
 ## Dev commands
 

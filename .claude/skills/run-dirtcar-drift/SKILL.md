@@ -1,6 +1,6 @@
 ---
 name: run-dirtcar-drift
-description: Build, run, and drive DirtCar Drift Challenge (apps/api + apps/web together). Use when asked to start the app, run the dev servers, take a screenshot of the UI, or verify the signup/login/leaderboard flow end-to-end.
+description: Build, run, and drive DirtCar Drift Challenge (apps/api + apps/web together, or the game engine standalone). Use when asked to start the app, run the dev servers, take a screenshot of the UI or the game canvas, verify the signup/login/leaderboard flow end-to-end, or test apps/web/src/game changes.
 ---
 
 Full-stack app: Express API (`apps/api`) + Vite/React frontend (`apps/web`),
@@ -84,6 +84,32 @@ curl -s -X POST http://localhost:4000/auth/signup \
 # verification link is logged to stdout when RESEND_API_KEY is unset
 ```
 
+## Game-engine-only testing (no API, no auth needed)
+
+For changes confined to `apps/web/src/game` (Phase 4+), skip the API and
+auth flow entirely — `apps/web/test.html` is a bare-HTML harness with no
+React and no login gate. Drive it with:
+
+```bash
+node .claude/skills/run-dirtcar-drift/driver-engine.mjs
+```
+
+Boots just the Vite dev server (port 5173), then in headless Chromium:
+confirms an idle (zero-click) run doesn't auto-clear gates (gates sit
+off-centerline in a slalom — if this check ever fails, gate placement has
+regressed back to sitting on the centerline, see Gotchas), confirms
+steady clicking clears gates and scores points, confirms spam-clicking
+overcorrects into a crash, and confirms the track dropdown switches and
+restarts on a new track. `[PASS]`/`[FAIL]` per check, non-zero exit on
+failure, kills the server on exit either way.
+
+Screenshots → `/tmp/dirtcar-drift-engine-shots/`. Log →
+`/tmp/dirtcar-drift-web.log`.
+
+To play it by hand instead: `cd apps/web && npm run dev`, then open
+`http://localhost:5173/test.html` — track dropdown, canvas, live
+score/gates/time HUD, click the canvas to drift.
+
 ## Run (human path)
 
 ```bash
@@ -104,8 +130,19 @@ Vitest/Supertest for the API, Playwright e2e — hasn't been built out).
 ## Gotchas
 
 - **`npx prisma dev` (Prisma's bundled local Postgres) throws `Dynamic
-  require of "assert" is not supported`** under this Node version. Use
+require of "assert" is not supported`** under this Node version. Use
   Homebrew Postgres (see Prerequisites) instead — don't debug this path.
+- **Gates must sit off the track centerline** (`apps/web/src/game/tracks/geometry.js`
+  and `apps/api/prisma/seed.js` both do this via a `slalomOffset` /
+  `SLALOM_FACTOR` helper, alternating left/right per gate). The original
+  Phase 1 seed data placed gates exactly on the centerline the car
+  defaults to with zero input, so a run with no clicks auto-cleared every
+  gate — clicking only affected the score bonus, never whether you
+  passed. If `driver-engine.mjs`'s "idle run does not auto-clear gates"
+  check starts failing, this is almost certainly why — and if the gate
+  math changes, `apps/api/prisma/seed.js` needs the matching change and a
+  re-seed (`npm run prisma:seed` in `apps/api`), or the DB and the client
+  disagree on gate shape.
 - **Prisma 7 requires a driver adapter.** There's no bare
   `DATABASE_URL` client anymore — `apps/api/src/lib/prisma.js` wires
   `@prisma/adapter-pg` explicitly. If you ever regenerate the Prisma

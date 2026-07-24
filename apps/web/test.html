@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Game engine test harness (no React)</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0c0d0f;
+        color: #f2f2f2;
+        font-family: system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+      }
+      #controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      #hud {
+        display: flex;
+        gap: 20px;
+        font-variant-numeric: tabular-nums;
+      }
+      #status {
+        min-height: 1.2em;
+        font-weight: 600;
+      }
+      canvas {
+        border: 1px solid #2a2d33;
+        border-radius: 8px;
+        background: #14161a;
+      }
+      button {
+        padding: 6px 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Engine test harness</h1>
+    <p>Click the canvas repeatedly to drift toward each gate. No React involved.</p>
+
+    <div id="controls">
+      <label>
+        Track:
+        <select id="track-select"></select>
+      </label>
+      <button id="restart">Restart</button>
+    </div>
+
+    <div id="hud">
+      <span>Score: <span id="score">0</span></span>
+      <span>Gates: <span id="gates">0/0</span></span>
+      <span>Time: <span id="time">0.0s</span></span>
+    </div>
+    <div id="status"></div>
+
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script type="module">
+      import { createEngine } from './src/game/engine.js';
+      import { TRACKS, getTrackById } from './src/game/tracks/index.js';
+
+      const canvas = document.getElementById('canvas');
+      const select = document.getElementById('track-select');
+      const restartBtn = document.getElementById('restart');
+      const scoreEl = document.getElementById('score');
+      const gatesEl = document.getElementById('gates');
+      const timeEl = document.getElementById('time');
+      const statusEl = document.getElementById('status');
+
+      TRACKS.forEach((track) => {
+        const option = document.createElement('option');
+        option.value = track.id;
+        option.textContent = `${track.name} (${track.difficulty}, ${track.pointsMultiplier}x)`;
+        select.appendChild(option);
+      });
+
+      let engine = null;
+
+      function run() {
+        engine?.stop();
+        statusEl.textContent = '';
+        scoreEl.textContent = '0';
+        const track = getTrackById(select.value);
+        gatesEl.textContent = `0/${track.gates.length}`;
+        timeEl.textContent = '0.0s';
+
+        engine = createEngine({
+          canvas,
+          track,
+          onTick: ({ score, gatesCleared, gatesTotal, elapsedMs }) => {
+            scoreEl.textContent = String(score);
+            gatesEl.textContent = `${gatesCleared}/${gatesTotal}`;
+            timeEl.textContent = `${(elapsedMs / 1000).toFixed(1)}s`;
+          },
+          onCrash: (final) => {
+            statusEl.textContent = `Crashed! Final score ${final.score} (${final.gatesCleared}/${final.gatesTotal} gates)`;
+          },
+          onFinish: (final) => {
+            statusEl.textContent = `Finished! Final score ${final.score} (${final.gatesCleared}/${final.gatesTotal} gates)`;
+          },
+        });
+        engine.start();
+      }
+
+      select.value = TRACKS[0].id;
+      select.addEventListener('change', run);
+      restartBtn.addEventListener('click', run);
+      run();
+    </script>
+  </body>
+</html>

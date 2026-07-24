@@ -103,7 +103,10 @@ export function createEngine({ canvas, track, onTick, onCrash, onFinish }) {
     if (result.crashed || result.finished) {
       ended = true;
       const final = computeScore(track, clickTimestamps);
-      (result.crashed ? onCrash : onFinish)?.(final);
+      // clickTimestamps ships alongside the client-computed score because
+      // that's the actual anti-cheat payload (build plan §7): the server
+      // recomputes the authoritative score from these, not from `final`.
+      (result.crashed ? onCrash : onFinish)?.({ ...final, clickTimestamps: [...clickTimestamps] });
       return;
     }
 

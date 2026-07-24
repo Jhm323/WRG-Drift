@@ -1,0 +1,52 @@
+.track-select {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  max-width: 900px;
+}
+
+.track-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.track-card:hover {
+  transform: translateY(-2px);
+}
+
+.track-card__thumbnail {
+  width: 100%;
+  height: 120px;
+  color: var(--color-accent);
+  background: var(--color-bg);
+  border-radius: 8px;
+}
+
+.track-card__title {
+  font-weight: 600;
+}
+
+.track-card__difficulty {
+  font-size: 0.8125rem;
+  text-transform: capitalize;
+  color: var(--color-text-muted);
+}
+
+.track-card__difficulty--easy {
+  color: #2a9d8f;
+}
+
+.track-card__difficulty--medium {
+  color: #e9c46a;
+}
+
+.track-card__difficulty--hard {
+  color: #e63946;
+}

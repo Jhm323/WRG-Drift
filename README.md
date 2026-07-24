@@ -16,9 +16,10 @@ npm workspaces monorepo:
 ## Status
 
 Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
-Phase 3 (frontend skeleton + auth UI), and Phase 4 (game engine) done.
-The engine isn't wired into React/the track-select UI yet — that's
-Phase 5.
+Phase 3 (frontend skeleton + auth UI), Phase 4 (game engine), and Phase 5
+(GameCanvas + track select) done. Runs aren't persisted yet — scoring is
+computed correctly client-side, but `POST /api/v1/scores` doesn't exist
+on the backend until Phase 6, so submission 404s (handled gracefully).
 
 ## apps/api setup
 
@@ -67,9 +68,8 @@ juggling needed in dev, cookies are same-origin through the proxy.
 Routes: `/login`, `/signup` are public. `/tracks`, `/play/:trackId`, and
 `/leaderboard` require a session — `ProtectedRoute` redirects to `/login`
 otherwise. `AuthContext`/`useAuth` (`src/context`, `src/hooks`) hold the
-session, backed by `GET /auth/me` on load. Track select, gameplay, and
-leaderboard pages are still placeholders — they're built out in Phases
-4–7.
+session, backed by `GET /auth/me` on load. `/leaderboard` is still a
+placeholder — that's Phase 7.
 
 ## Game engine (Phase 4)
 
@@ -102,6 +102,24 @@ Test it standalone, no React, no build step:
 cd apps/web && npm run dev
 # open http://localhost:5173/test.html
 ```
+
+## GameCanvas + track select (Phase 5)
+
+- `components/GameCanvas/` — thin React wrapper (`useRef` + `useEffect`)
+  around `createEngine()`. All game logic still lives in `src/game`; this
+  component only owns the `<canvas>` element's lifecycle.
+- `components/TrackSelect/` — the `/tracks` grid, `track-card` BEM markup,
+  with an SVG thumbnail traced from each track's actual curve data. Reads
+  track data straight from `src/game/tracks` (not an API call — there's no
+  `GET /tracks` endpoint in the plan, and the client already has the full
+  track config it needs to render and play).
+- `pages/PlayPage.jsx` — looks up the track by the `:trackId` route param,
+  renders `GameCanvas` with a live score/gates/time HUD, and on
+  crash/finish shows the result with "Play again" (remounts `GameCanvas`
+  via a `key` bump) and "Back to tracks." Also POSTs `{ trackId,
+  clickTimestamps }` to `/api/v1/scores` — expected to 404 until Phase 6
+  builds that endpoint; failure is swallowed so the player's
+  client-computed result still displays either way.
 
 ## Dev commands
 

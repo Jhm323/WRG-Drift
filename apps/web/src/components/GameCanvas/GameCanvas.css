@@ -1,0 +1,8 @@
+.game-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #2a2d33;
+  border-radius: 8px;
+  background: #14161a;
+}

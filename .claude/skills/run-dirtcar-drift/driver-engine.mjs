@@ -114,7 +114,11 @@ async function main() {
     const gatesText = await page.textContent('#gates');
     const scoreText = await page.textContent('#score');
     const clearedCount = Number(gatesText.split('/')[0]);
-    step('clicking clears gates and scores points', clearedCount > 0 && Number(scoreText) > 0, `${gatesText}, score=${scoreText}`);
+    step(
+      'clicking clears gates and scores points',
+      clearedCount > 0 && Number(scoreText) > 0,
+      `${gatesText}, score=${scoreText}`,
+    );
     step('no console errors during active play', errors.length === 0, JSON.stringify(errors));
     await page.screenshot({ path: `${SHOT_DIR}/2-active-play.png` });
     await page.close();

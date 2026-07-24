@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware.js';
 import { authRouter } from './routes/auth.routes.js';
 import { scoresRouter } from './routes/scores.routes.js';
+import { leaderboardRouter } from './routes/leaderboard.routes.js';
 
 export const app = express();
 
@@ -17,6 +18,7 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', authRouter);
 app.use('/api/v1/scores', scoresRouter);
+app.use('/api/v1/leaderboard', leaderboardRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

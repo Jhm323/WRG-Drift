@@ -1,0 +1,92 @@
+.leaderboard {
+  max-width: 640px;
+}
+
+.leaderboard__tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.leaderboard__tab {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.leaderboard__tab--active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.leaderboard__status {
+  color: var(--color-text-muted);
+}
+
+.leaderboard__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard__table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid #2a2d33;
+}
+
+.leaderboard__row td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #22252b;
+}
+
+.leaderboard__row--highlighted {
+  background: rgba(58, 134, 255, 0.12);
+}
+
+.leaderboard__rank {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  width: 2.5rem;
+}
+
+.leaderboard__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: block;
+}
+
+.leaderboard__name {
+  font-weight: 600;
+}
+
+.leaderboard__score {
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard__rank-change {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.leaderboard__rank-change--up {
+  color: #2a9d8f;
+}
+
+.leaderboard__rank-change--down {
+  color: #e63946;
+}
+
+.leaderboard__rank-change--same {
+  color: var(--color-text-muted);
+}
+
+.leaderboard__rank-change--new {
+  color: var(--color-accent);
+}

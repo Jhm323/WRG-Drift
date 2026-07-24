@@ -17,9 +17,9 @@ npm workspaces monorepo:
 
 Phase 0 (repo scaffold), Phase 1 (backend skeleton + DB), Phase 2 (auth),
 Phase 3 (frontend skeleton + auth UI), Phase 4 (game engine), Phase 5
-(GameCanvas + track select), and Phase 6 (server-authoritative scoring)
-done. Runs are persisted for real now. Leaderboards aren't built yet —
-that's Phase 7, so nothing reads the `Run` table back out yet.
+(GameCanvas + track select), Phase 6 (server-authoritative scoring), and
+Phase 7 (leaderboards) done. Remaining: Phase 8 (polish/QA) and Phase 9
+(deploy).
 
 ## apps/api setup
 
@@ -68,8 +68,7 @@ juggling needed in dev, cookies are same-origin through the proxy.
 Routes: `/login`, `/signup` are public. `/tracks`, `/play/:trackId`, and
 `/leaderboard` require a session — `ProtectedRoute` redirects to `/login`
 otherwise. `AuthContext`/`useAuth` (`src/context`, `src/hooks`) hold the
-session, backed by `GET /auth/me` on load. `/leaderboard` is still a
-placeholder — that's Phase 7.
+session, backed by `GET /auth/me` on load.
 
 ## Game engine (Phase 4)
 
@@ -139,6 +138,39 @@ auth) takes `{ trackId, clickTimestamps, score }`:
 4. Persists the `Run` with a `serverChecksum` (HMAC via `SCORE_HMAC_SECRET`,
    a separate secret from `JWT_SECRET` so rotating one doesn't invalidate
    the other).
+
+## Leaderboards (Phase 7)
+
+`GET /api/v1/leaderboard?period=weekly|monthly&trackId=optional` (requires
+auth) — best score per user in the current ISO week (Mon–Sun, UTC) or
+calendar month, ranked, joined with `displayName`/`avatarUrl`. Rank change
+(`up`/`down`/`same`/`new`) compares against the most recent
+`LeaderboardSnapshot` for the _previous_ period — only computed on the
+all-tracks board, since snapshots aren't tracked per-track. Logic lives in
+`apps/api/src/services/leaderboard.service.js`, date-boundary math in
+`src/lib/period.js`.
+
+`apps/web/src/components/Leaderboard/` — Weekly/Monthly tabs, a
+`leaderboard__row--highlighted` row for the current user, and a rank-change
+badge per row.
+
+`apps/api/src/jobs/leaderboardRollover.job.js` — `node-cron` fires
+`runRollover('weekly')` every Monday 00:00 UTC and `runRollover('monthly')`
+on the 1st, each freezing the period that just ended into
+`LeaderboardSnapshot` (so the podium doesn't shift after the fact) and
+calling `announceWinners()`:
+
+- **Slack** — posts to `SLACK_WEBHOOK_URL`; unset in dev, so it logs the
+  message instead (same pattern as the email/dev-log fallback from Phase 2).
+- **Intraweb site** — stubbed: logs a generated announcement post to paste
+  in manually, until the target CMS/API is known.
+- **WhatsApp** — intentionally not implemented; needs a provider decision
+  (WhatsApp Business Platform vs. Twilio) and a pre-approved template,
+  outside this codebase's control (build plan §6).
+
+`runRollover(period, referenceDate?)` is exported standalone, so it can be
+run manually without waiting for a real cron tick — useful for verifying
+this job in dev.
 
 ## Dev commands
 

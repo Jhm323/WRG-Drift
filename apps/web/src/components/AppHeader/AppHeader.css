@@ -38,6 +38,19 @@
   flex-wrap: nowrap;
 }
 
+.app-header__profile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.app-header__profile-link:hover .app-header__name {
+  text-decoration: underline;
+}
+
 .app-header__avatar {
   width: 28px;
   height: 28px;

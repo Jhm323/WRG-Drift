@@ -24,6 +24,12 @@ export function AuthProvider({ children }) {
     return authApi.signup(details);
   }, []);
 
+  const updateProfile = useCallback(async (updates) => {
+    const data = await authApi.updateProfile(updates);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -37,7 +43,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

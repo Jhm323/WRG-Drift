@@ -20,3 +20,9 @@ authRouter.post(
   authController.resetPassword,
 );
 authRouter.get('/me', requireAuth, authController.me);
+authRouter.patch(
+  '/me',
+  requireAuth,
+  validateBody(authController.updateProfileSchema),
+  authController.updateProfile,
+);

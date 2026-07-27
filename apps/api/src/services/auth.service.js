@@ -92,6 +92,25 @@ export async function login({ email, password }) {
   };
 }
 
+// displayName/avatarUrl only — email is never accepted here (see
+// updateProfileSchema), so there's no lookup/uniqueness concern like signup
+// has. Returns the same shape requireAuth puts on req.user, since that's
+// what the frontend replaces its cached user with on save.
+export async function updateProfile(userId, { displayName, avatarUrl }) {
+  const data = {};
+  if (displayName !== undefined) data.displayName = displayName;
+  if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
+
+  const user = await prisma.user.update({ where: { id: userId }, data });
+
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+  };
+}
+
 export async function requestPasswordReset(email) {
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   // Resolve silently either way so this endpoint can't be used to test which emails have accounts.

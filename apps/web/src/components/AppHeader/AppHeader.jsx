@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import './AppHeader.css';
 
@@ -23,8 +23,10 @@ export function AppHeader() {
       </nav>
 
       <div className="app-header__user">
-        <img className="app-header__avatar" src={user.avatarUrl} alt="" />
-        <span className="app-header__name">{user.displayName}</span>
+        <Link className="app-header__profile-link" to="/profile" aria-label="Edit profile">
+          <img className="app-header__avatar" src={user.avatarUrl} alt="" />
+          <span className="app-header__name">{user.displayName}</span>
+        </Link>
         <button className="app-header__logout" type="button" onClick={logout}>
           Log out
         </button>

@@ -1,11 +1,16 @@
 import { z } from 'zod';
 import * as authService from '../services/auth.service.js';
 
+// Shared with updateProfileSchema below so profile edits enforce the exact
+// same constraints as signup, rather than a second, possibly-drifting rule.
+const displayNameSchema = z.string().min(1).max(50);
+const avatarUrlSchema = z.string().min(1);
+
 export const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  displayName: z.string().min(1).max(50),
-  avatarUrl: z.string().min(1),
+  displayName: displayNameSchema,
+  avatarUrl: avatarUrlSchema,
 });
 
 export const loginSchema = z.object({
@@ -21,6 +26,19 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(1),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
+
+// No email field on purpose — email stays fixed to what was verified at
+// signup (the @dirtcar.com + one-account-per-email design). Both fields
+// are optional individually (PATCH semantics), but at least one must be
+// present, or there's nothing to update.
+export const updateProfileSchema = z
+  .object({
+    displayName: displayNameSchema.optional(),
+    avatarUrl: avatarUrlSchema.optional(),
+  })
+  .refine((data) => data.displayName !== undefined || data.avatarUrl !== undefined, {
+    message: 'At least one of displayName or avatarUrl is required',
+  });
 
 // Dev: frontend and API are same-site (Vite proxies /auth to the API), so
 // Lax + non-Secure works over plain HTTP. Production: Vercel (frontend) and
@@ -80,4 +98,9 @@ export async function resetPassword(req, res) {
 
 export function me(req, res) {
   res.json({ user: req.user });
+}
+
+export async function updateProfile(req, res) {
+  const user = await authService.updateProfile(req.user.id, req.body);
+  res.json({ user });
 }

@@ -22,6 +22,16 @@ export function fetchCurrentUser() {
   return apiFetch('/auth/me');
 }
 
+export function updateProfile({ displayName, avatarUrl }) {
+  const body = {};
+  if (displayName !== undefined) body.displayName = displayName;
+  if (avatarUrl !== undefined) body.avatarUrl = avatarUrl;
+  return apiFetch('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
 export function forgotPassword({ email }) {
   return apiFetch('/auth/forgot-password', {
     method: 'POST',

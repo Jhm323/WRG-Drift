@@ -72,7 +72,7 @@ function switchbackCanyonTrack() {
 
   const curve = Array.from({ length: 80 }, (_, i) => pointAtFraction(i / 79));
 
-  return { curve, ribbonWidth: 90 };
+  return { curve, ribbonWidth: 105 };
 }
 
 const tracks = [

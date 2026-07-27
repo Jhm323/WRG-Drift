@@ -1,6 +1,6 @@
 import './AvatarPicker.css';
 
-export const AVATAR_OPTIONS = Array.from({ length: 8 }, (_, i) => `/avatars/avatar-${i + 1}.svg`);
+export const AVATAR_OPTIONS = Array.from({ length: 8 }, (_, i) => `/avatars/avatar-${i + 1}.png`);
 
 export function AvatarPicker({ value, onChange }) {
   return (

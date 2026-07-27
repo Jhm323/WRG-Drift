@@ -4,6 +4,22 @@
 
 import { buildTrackIndex, simulateRun, computeScore, scoreFromSurvivalMs } from '@dirtcar-drift/shared';
 import { attachKeyboardInput } from './input.js';
+import carIconUrl from '../assets/car-icon.svg';
+
+// car-icon.svg's 100x208 viewBox has a lot of transparent padding above and
+// below the artwork itself (measured empirically) — the visible car only
+// occupies this sub-rect. Source-cropping to it means the draw size below
+// maps onto the actual visible car, not onto the padded viewBox.
+const CAR_ICON_SOURCE_X = 0;
+const CAR_ICON_SOURCE_Y = 52;
+const CAR_ICON_SOURCE_WIDTH = 100;
+const CAR_ICON_SOURCE_HEIGHT = 99;
+
+// Drawn length (nose-to-tail) roughly matches the old arrow's ~18px
+// point-to-tail footprint; width follows the cropped artwork's own aspect
+// ratio so it isn't stretched.
+const CAR_ICON_LENGTH_PX = 18;
+const CAR_ICON_WIDTH_PX = CAR_ICON_LENGTH_PX * (CAR_ICON_SOURCE_WIDTH / CAR_ICON_SOURCE_HEIGHT);
 
 function computeFitTransform(points, width, height, padding = 40) {
   const xs = points.map((p) => p.x);
@@ -23,7 +39,7 @@ function computeFitTransform(points, width, height, padding = 40) {
   };
 }
 
-function render(ctx, canvas, track, trackIndex, transform, result) {
+function render(ctx, canvas, track, trackIndex, transform, result, carImage) {
   const toScreen = (p) => ({
     x: p.x * transform.scale + transform.offsetX,
     y: p.y * transform.scale + transform.offsetY,
@@ -52,14 +68,22 @@ function render(ctx, canvas, track, trackIndex, transform, result) {
   const carScreen = toScreen(result.car);
   ctx.save();
   ctx.translate(carScreen.x, carScreen.y);
-  ctx.rotate(result.car.heading);
-  ctx.fillStyle = '#3a86ff';
-  ctx.beginPath();
-  ctx.moveTo(10, 0);
-  ctx.lineTo(-8, 6);
-  ctx.lineTo(-8, -6);
-  ctx.closePath();
-  ctx.fill();
+  // car-icon.svg's nose points "up" (its own -y) rather than along +x like
+  // heading=0 does, so rotate an extra 90deg to line the nose up with the
+  // heading direction the same way the old arrow (drawn pointing along +x)
+  // did with a bare ctx.rotate(heading).
+  ctx.rotate(result.car.heading + Math.PI / 2);
+  ctx.drawImage(
+    carImage,
+    CAR_ICON_SOURCE_X,
+    CAR_ICON_SOURCE_Y,
+    CAR_ICON_SOURCE_WIDTH,
+    CAR_ICON_SOURCE_HEIGHT,
+    -CAR_ICON_WIDTH_PX / 2,
+    -CAR_ICON_LENGTH_PX / 2,
+    CAR_ICON_WIDTH_PX,
+    CAR_ICON_LENGTH_PX,
+  );
   ctx.restore();
 }
 
@@ -67,6 +91,8 @@ export function createEngine({ canvas, track, onTick, onCrash }) {
   const ctx = canvas.getContext('2d');
   const trackIndex = buildTrackIndex(track);
   const transform = computeFitTransform(track.curve, canvas.width, canvas.height);
+  const carImage = new Image();
+  carImage.src = carIconUrl;
 
   let keyEvents = [];
   let startTime = null;
@@ -78,7 +104,7 @@ export function createEngine({ canvas, track, onTick, onCrash }) {
     if (ended) return;
     const elapsedMs = now - startTime;
     const result = simulateRun(track, trackIndex, keyEvents, { stopAtMs: elapsedMs });
-    render(ctx, canvas, track, trackIndex, transform, result);
+    render(ctx, canvas, track, trackIndex, transform, result, carImage);
 
     onTick?.({
       score: scoreFromSurvivalMs(track, result.survivalMs),

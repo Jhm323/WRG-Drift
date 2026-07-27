@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Engine-only driver for apps/web/src/game (Phase 4+): boots just the Vite
 // dev server, drives apps/web/test.html — no API, no auth. Proves the
-// canvas game actually renders and responds to clicks: idle (zero-click)
-// baseline, active play, a forced crash, and a track switch.
+// canvas game actually renders and responds to keyboard input: idle
+// (zero-key) baseline, active steered play, a forced straight-line crash,
+// and a track switch.
 
 import { chromium } from 'playwright';
 import { spawn, execSync } from 'node:child_process';
@@ -86,71 +87,80 @@ async function main() {
   const browser = await chromium.launch();
   const url = `http://localhost:${WEB_PORT}/test.html`;
 
-  // 1. Idle baseline — gates are off-centerline (slalom), so zero clicks
-  // should clear few or none. If this ever shows a high clear count, the
-  // gate placement has regressed back to sitting on the centerline.
+  // 1. Idle baseline — no key ever pressed, so the car sits still and the
+  // timer never starts. If this ever shows nonzero score/time, the "car
+  // waits for first keydown" rule has regressed.
   {
     const { page, errors } = await freshPage(browser);
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.waitForSelector('canvas');
-    await page.waitForTimeout(3000);
-    const gatesText = await page.textContent('#gates');
-    step('idle (zero-click) run does not auto-clear gates', /^[0-2]\//.test(gatesText), gatesText);
+    await page.waitForTimeout(2000);
+    const scoreText = await page.textContent('#score');
+    const timeText = await page.textContent('#time');
+    step('idle (no keys) run does not start the timer', scoreText === '0' && timeText === '0.0s', `score=${scoreText}, time=${timeText}`);
     step('no console errors on idle run', errors.length === 0, JSON.stringify(errors));
     await page.screenshot({ path: `${SHOT_DIR}/1-idle.png` });
     await page.close();
   }
 
-  // 2. Active play — steady clicks should clear gates and accumulate score.
+  // 2. Active steered play — alternating left/right taps to hug the curve
+  // should survive for a while and accumulate score.
   {
     const { page, errors } = await freshPage(browser);
     await page.goto(url, { waitUntil: 'networkidle' });
-    const canvas = await page.waitForSelector('canvas');
-    const box = await canvas.boundingBox();
-    for (let i = 0; i < 14; i += 1) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-      await page.waitForTimeout(650);
+    await page.waitForSelector('canvas');
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(220);
+    await page.keyboard.up('ArrowRight');
+    for (let i = 0; i < 12; i += 1) {
+      await page.keyboard.down('ArrowRight');
+      await page.waitForTimeout(180);
+      await page.keyboard.up('ArrowRight');
+      await page.waitForTimeout(120);
     }
-    const gatesText = await page.textContent('#gates');
     const scoreText = await page.textContent('#score');
-    const clearedCount = Number(gatesText.split('/')[0]);
+    const timeText = await page.textContent('#time');
     step(
-      'clicking clears gates and scores points',
-      clearedCount > 0 && Number(scoreText) > 0,
-      `${gatesText}, score=${scoreText}`,
+      'steered play survives and scores points',
+      Number(scoreText) > 0 && parseFloat(timeText) > 1,
+      `score=${scoreText}, time=${timeText}`,
     );
     step('no console errors during active play', errors.length === 0, JSON.stringify(errors));
     await page.screenshot({ path: `${SHOT_DIR}/2-active-play.png` });
     await page.close();
   }
 
-  // 3. Spam-clicking should overcorrect and crash.
+  // 3. Straight-line crash — start, then release every key so the car
+  // drives dead straight off a curving track and leaves the ribbon.
   {
     const { page, errors } = await freshPage(browser);
     await page.goto(url, { waitUntil: 'networkidle' });
-    const canvas = await page.waitForSelector('canvas');
-    const box = await canvas.boundingBox();
-    for (let i = 0; i < 20; i += 1) {
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-      await page.waitForTimeout(40);
-    }
-    await page.waitForTimeout(500);
+    await page.waitForSelector('canvas');
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(30);
+    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(6000);
     const statusText = await page.textContent('#status');
-    step('spam-clicking crashes the run', statusText.startsWith('Crashed'), statusText);
+    step('driving straight off a curve crashes the run', statusText.startsWith('Crashed'), statusText);
     step('no console errors on crash', errors.length === 0, JSON.stringify(errors));
     await page.screenshot({ path: `${SHOT_DIR}/3-crashed.png` });
     await page.close();
   }
 
-  // 4. Track switch — dropdown restarts the run on the new track.
+  // 4. Track switch — dropdown restarts the run on the new track, back to
+  // idle zero score/time.
   {
     const { page, errors } = await freshPage(browser);
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.waitForSelector('canvas');
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(500);
+    await page.keyboard.up('ArrowRight');
     await page.selectOption('#track-select', 'switchback-canyon');
-    await page.waitForTimeout(1000);
-    const gatesText = await page.textContent('#gates');
-    step('track switch restarts on the new track', gatesText.endsWith('/18'), gatesText);
+    await page.waitForTimeout(500);
+    const scoreText = await page.textContent('#score');
+    const timeText = await page.textContent('#time');
+    step('track switch restarts on the new track', scoreText === '0' && timeText === '0.0s', `score=${scoreText}, time=${timeText}`);
     step('no console errors on track switch', errors.length === 0, JSON.stringify(errors));
     await page.screenshot({ path: `${SHOT_DIR}/4-switchback.png` });
     await page.close();

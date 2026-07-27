@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createEngine } from '../../game/engine.js';
 import './GameCanvas.css';
 
@@ -7,17 +7,20 @@ const CANVAS_HEIGHT = 600;
 
 // Thin React wrapper around the framework-agnostic engine (apps/web/src/game).
 // All game logic lives there — this component only owns the canvas element's
-// lifecycle and forwards engine callbacks as props.
-export function GameCanvas({ track, onTick, onCrash, onFinish }) {
+// lifecycle, forwards engine callbacks as props, and shows the pre-start hint.
+export function GameCanvas({ track, onTick, onCrash }) {
   const canvasRef = useRef(null);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     const engine = createEngine({
       canvas: canvasRef.current,
       track,
-      onTick,
+      onTick: (stats) => {
+        setStarted(stats.started);
+        onTick?.(stats);
+      },
       onCrash,
-      onFinish,
     });
     engine.start();
     return () => engine.stop();
@@ -25,6 +28,11 @@ export function GameCanvas({ track, onTick, onCrash, onFinish }) {
   }, [track]);
 
   return (
-    <canvas ref={canvasRef} className="game-canvas" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />
+    <div className="game-canvas-wrap">
+      <canvas ref={canvasRef} className="game-canvas" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />
+      {!started && (
+        <p className="game-canvas__hint">Hold ← / → to drift — press either to start.</p>
+      )}
+    </div>
   );
 }

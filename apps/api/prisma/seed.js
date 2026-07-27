@@ -1,35 +1,16 @@
 import 'dotenv/config';
 import { prisma } from '../src/lib/prisma.js';
 
-// Parametric helpers — generate gate positions + a denser curve for rendering.
-// Mirrors apps/web/src/game/tracks/geometry.js, which the Phase 4 game engine
-// actually plays against — the DB and the client must agree on gate shape.
-
-// Gates sit off the centerline, alternating left/right, at slightly more than
-// their own radius — a car that never drifts (never clicked) always just
-// misses. Gates placed exactly on the centerline auto-clear with zero input,
-// which was the original (Phase 1) placement and made clicking pointless.
-const SLALOM_FACTOR = 1.25;
-
-function slalomOffset(pointAt, t, index, radius, epsilon = 1e-3) {
-  const p0 = pointAt(t);
-  const p1 = pointAt(t + epsilon);
-  const dx = p1.x - p0.x;
-  const dy = p1.y - p0.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  const side = index % 2 === 0 ? 1 : -1;
-  const magnitude = radius * SLALOM_FACTOR * side;
-  return { x: p0.x + nx * magnitude, y: p0.y + ny * magnitude, radius };
-}
+// Parametric helpers — generate a denser curve for rendering plus the
+// track's ribbon width. Mirrors apps/web/src/game/tracks/geometry.js,
+// which the game engine actually plays against — the DB and the client
+// must agree on curve + ribbon shape.
 
 function ovalTrack() {
   const cx = 400;
   const cy = 300;
   const rx = 300;
   const ry = 180;
-  const gateCount = 10;
   const curvePoints = 60;
 
   const pointAt = (t) => ({
@@ -37,22 +18,17 @@ function ovalTrack() {
     y: cy + ry * Math.sin(t),
   });
 
-  const gates = Array.from({ length: gateCount }, (_, i) =>
-    slalomOffset(pointAt, (i / gateCount) * Math.PI * 2, i, 55),
-  );
-
   const curve = Array.from({ length: curvePoints }, (_, i) =>
     pointAt((i / curvePoints) * Math.PI * 2),
   );
 
-  return { gates, curve, parTimeMs: 28000 };
+  return { curve, ribbonWidth: 140 };
 }
 
 function figureEightTrack() {
   const cx = 400;
   const cy = 300;
   const a = 260;
-  const gateCount = 14;
   const curvePoints = 80;
 
   // Lemniscate of Bernoulli, traced as a single closed loop.
@@ -64,17 +40,11 @@ function figureEightTrack() {
     };
   };
 
-  const gates = Array.from({ length: gateCount }, (_, i) => {
-    const t = (i / gateCount) * Math.PI * 2;
-    const nearCrossover = Math.abs(Math.sin(t)) < 0.35;
-    return slalomOffset(pointAt, t, i, nearCrossover ? 28 : 40);
-  });
-
   const curve = Array.from({ length: curvePoints }, (_, i) =>
     pointAt((i / curvePoints) * Math.PI * 2),
   );
 
-  return { gates, curve, parTimeMs: 40000 };
+  return { curve, ribbonWidth: 110 };
 }
 
 function switchbackCanyonTrack() {
@@ -82,7 +52,6 @@ function switchbackCanyonTrack() {
   const startY = 500;
   const legLength = 90;
   const switchbackCount = 8;
-  const gateCount = 18;
 
   // Zigzag hairpin path climbing up a canyon wall.
   const anchors = [{ x: startX, y: startY }];
@@ -101,13 +70,9 @@ function switchbackCanyonTrack() {
     return lerp(anchors[i], anchors[i + 1], scaled - i);
   };
 
-  const gates = Array.from({ length: gateCount }, (_, i) =>
-    slalomOffset(pointAtFraction, i / (gateCount - 1), i, 22),
-  );
-
   const curve = Array.from({ length: 80 }, (_, i) => pointAtFraction(i / 79));
 
-  return { gates, curve, parTimeMs: 52000 };
+  return { curve, ribbonWidth: 90 };
 }
 
 const tracks = [

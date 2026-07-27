@@ -56,7 +56,6 @@ model Run {
   userId         String   @map("user_id")
   trackId        String   @map("track_id")
   score          Int
-  gatesCleared   Int      @map("gates_cleared")
   crashed        Boolean
   durationMs     Int      @map("duration_ms")
   playedAt       DateTime @default(now()) @map("played_at")

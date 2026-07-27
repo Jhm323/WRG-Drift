@@ -16,10 +16,6 @@
   max-width: 800px;
 }
 
-.play-page__result--finished {
-  background: rgba(42, 157, 143, 0.15);
-}
-
 .play-page__result--crashed {
   background: rgba(230, 57, 70, 0.15);
 }

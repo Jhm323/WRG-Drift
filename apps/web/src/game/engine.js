@@ -1,20 +1,9 @@
 // Framework-agnostic canvas game loop. Takes a canvas + track, renders the
-// live simulation every frame, and reports gate/crash/finish events via
+// live simulation every frame, and reports crash/tick events via
 // callbacks. No React dependency — see test.html for a bare-HTML harness.
 
-import {
-  buildTrackIndex,
-  simulateRun,
-  scoreFromGateEvents,
-  computeScore,
-} from '@dirtcar-drift/shared';
-import { attachClickInput } from './input.js';
-
-// Deliberately independent of drift.js's TRACK_HALF_WIDTH_PX (the crash
-// boundary) — that constant got wider to fit the slalom gates, but drawing
-// the road that wide made it self-overlap on tighter curves. This is purely
-// cosmetic: how wide the road *looks*, not how far you can drift before crashing.
-const ROAD_VISUAL_WIDTH_PX = 50;
+import { buildTrackIndex, simulateRun, computeScore, scoreFromSurvivalMs } from '@dirtcar-drift/shared';
+import { attachKeyboardInput } from './input.js';
 
 function computeFitTransform(points, width, height, padding = 40) {
   const xs = points.map((p) => p.x);
@@ -44,13 +33,13 @@ function render(ctx, canvas, track, trackIndex, transform, result) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.beginPath();
-  trackIndex.curveIndex.points.forEach((point, i) => {
+  trackIndex.curve.forEach((point, i) => {
     const s = toScreen(point);
     if (i === 0) ctx.moveTo(s.x, s.y);
     else ctx.lineTo(s.x, s.y);
   });
   ctx.strokeStyle = '#2a2d33';
-  ctx.lineWidth = Math.max(2, ROAD_VISUAL_WIDTH_PX * transform.scale);
+  ctx.lineWidth = Math.max(2, trackIndex.ribbonWidth * transform.scale);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.stroke();
@@ -59,16 +48,6 @@ function render(ctx, canvas, track, trackIndex, transform, result) {
   ctx.setLineDash([4, 6]);
   ctx.stroke();
   ctx.setLineDash([]);
-
-  track.gates.forEach((gate, i) => {
-    const event = result.gateEvents.find((e) => e.gateIndex === i);
-    const s = toScreen(gate);
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, Math.max(3, gate.radius * transform.scale), 0, Math.PI * 2);
-    ctx.strokeStyle = event ? (event.cleared ? '#2a9d8f' : '#e63946') : '#6d597a';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  });
 
   const carScreen = toScreen(result.car);
   ctx.save();
@@ -84,12 +63,12 @@ function render(ctx, canvas, track, trackIndex, transform, result) {
   ctx.restore();
 }
 
-export function createEngine({ canvas, track, onTick, onCrash, onFinish }) {
+export function createEngine({ canvas, track, onTick, onCrash }) {
   const ctx = canvas.getContext('2d');
   const trackIndex = buildTrackIndex(track);
   const transform = computeFitTransform(track.curve, canvas.width, canvas.height);
 
-  let clickTimestamps = [];
+  let keyEvents = [];
   let startTime = null;
   let rafId = null;
   let ended = false;
@@ -98,19 +77,23 @@ export function createEngine({ canvas, track, onTick, onCrash, onFinish }) {
   function tick(now) {
     if (ended) return;
     const elapsedMs = now - startTime;
-    const result = simulateRun(track, trackIndex, clickTimestamps, { stopAtMs: elapsedMs });
+    const result = simulateRun(track, trackIndex, keyEvents, { stopAtMs: elapsedMs });
     render(ctx, canvas, track, trackIndex, transform, result);
 
-    const live = scoreFromGateEvents(track, result.gateEvents);
-    onTick?.({ ...live, gatesTotal: result.gatesTotal, elapsedMs: result.elapsedMs });
+    onTick?.({
+      score: scoreFromSurvivalMs(track, result.survivalMs),
+      elapsedMs: result.survivalMs,
+      started: result.started,
+    });
 
-    if (result.crashed || result.finished) {
+    if (result.crashed) {
       ended = true;
-      const final = computeScore(track, clickTimestamps);
-      // clickTimestamps ships alongside the client-computed score because
-      // that's the actual anti-cheat payload (build plan §7): the server
-      // recomputes the authoritative score from these, not from `final`.
-      (result.crashed ? onCrash : onFinish)?.({ ...final, clickTimestamps: [...clickTimestamps] });
+      detachInput?.();
+      const final = computeScore(track, keyEvents);
+      // keyEvents ships alongside the client-computed score because that's
+      // the actual anti-cheat payload: the server recomputes the
+      // authoritative score from these, not from `final`.
+      onCrash?.({ ...final, keyEvents: [...keyEvents] });
       return;
     }
 
@@ -120,10 +103,10 @@ export function createEngine({ canvas, track, onTick, onCrash, onFinish }) {
   return {
     start() {
       ended = false;
-      clickTimestamps = [];
+      keyEvents = [];
       startTime = performance.now();
-      detachInput = attachClickInput(canvas, () => {
-        if (!ended) clickTimestamps.push(performance.now() - startTime);
+      detachInput = attachKeyboardInput((event) => {
+        if (!ended) keyEvents.push({ ...event, atMs: performance.now() - startTime });
       });
       rafId = requestAnimationFrame(tick);
     },

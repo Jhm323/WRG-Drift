@@ -18,11 +18,12 @@ function serverChecksumFor({ userId, trackId, score, durationMs }) {
 }
 
 // Never trust a score sent raw from the client (build plan §7). The client
-// only supplies the track it played and the raw click timestamps; this
-// replays that input through the exact same shared scoring function the
-// client used for live feedback, and persists *that* result — the
-// client-reported score (if any) is only used as a tamper check.
-export async function submitRun({ userId, trackId, clickTimestamps, clientScore }) {
+// only supplies the track it played and the raw ArrowLeft/ArrowRight
+// press/release log; this replays that input through the exact same
+// shared scoring function the client used for live feedback, and persists
+// *that* result — the client-reported score (if any) is only used as a
+// tamper check.
+export async function submitRun({ userId, trackId, keyEvents, clientScore }) {
   const track = await prisma.track.findUnique({ where: { id: trackId } });
   if (!track) {
     throw new HttpError(404, 'Unknown track');
@@ -30,11 +31,11 @@ export async function submitRun({ userId, trackId, clickTimestamps, clientScore 
 
   const trackForScoring = {
     pointsMultiplier: track.pointsMultiplier,
-    gates: track.config.gates,
     curve: track.config.curve,
+    ribbonWidth: track.config.ribbonWidth,
   };
 
-  const authoritative = computeScore(trackForScoring, clickTimestamps);
+  const authoritative = computeScore(trackForScoring, keyEvents);
 
   if (
     typeof clientScore === 'number' &&
@@ -55,7 +56,6 @@ export async function submitRun({ userId, trackId, clickTimestamps, clientScore 
       userId,
       trackId,
       score: authoritative.score,
-      gatesCleared: authoritative.gatesCleared,
       crashed: authoritative.crashed,
       durationMs: authoritative.durationMs,
       serverChecksum,

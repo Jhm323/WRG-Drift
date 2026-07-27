@@ -95,20 +95,19 @@ node .claude/skills/run-dirtcar-drift/driver-engine.mjs
 ```
 
 Boots just the Vite dev server (port 5173), then in headless Chromium:
-confirms an idle (zero-click) run doesn't auto-clear gates (gates sit
-off-centerline in a slalom — if this check ever fails, gate placement has
-regressed back to sitting on the centerline, see Gotchas), confirms
-steady clicking clears gates and scores points, confirms spam-clicking
-overcorrects into a crash, and confirms the track dropdown switches and
-restarts on a new track. `[PASS]`/`[FAIL]` per check, non-zero exit on
-failure, kills the server on exit either way.
+confirms an idle (zero-key) run never starts the timer (the car waits for
+the first ArrowLeft/ArrowRight keydown), confirms steered play (alternating
+left/right taps) survives and scores points, confirms driving dead straight
+off a curving track crashes the run, and confirms the track dropdown
+switches and restarts on a new track. `[PASS]`/`[FAIL]` per check,
+non-zero exit on failure, kills the server on exit either way.
 
 Screenshots → `/tmp/dirtcar-drift-engine-shots/`. Log →
 `/tmp/dirtcar-drift-web.log`.
 
 To play it by hand instead: `cd apps/web && npm run dev`, then open
 `http://localhost:5173/test.html` — track dropdown, canvas, live
-score/gates/time HUD, click the canvas to drift.
+score/time HUD, hold ← or → to drift (press either to start).
 
 ## Run (human path)
 
@@ -132,17 +131,14 @@ Vitest/Supertest for the API, Playwright e2e — hasn't been built out).
 - **`npx prisma dev` (Prisma's bundled local Postgres) throws `Dynamic
 require of "assert" is not supported`** under this Node version. Use
   Homebrew Postgres (see Prerequisites) instead — don't debug this path.
-- **Gates must sit off the track centerline** (`apps/web/src/game/tracks/geometry.js`
-  and `apps/api/prisma/seed.js` both do this via a `slalomOffset` /
-  `SLALOM_FACTOR` helper, alternating left/right per gate). The original
-  Phase 1 seed data placed gates exactly on the centerline the car
-  defaults to with zero input, so a run with no clicks auto-cleared every
-  gate — clicking only affected the score bonus, never whether you
-  passed. If `driver-engine.mjs`'s "idle run does not auto-clear gates"
-  check starts failing, this is almost certainly why — and if the gate
-  math changes, `apps/api/prisma/seed.js` needs the matching change and a
-  re-seed (`npm run prisma:seed` in `apps/api`), or the DB and the client
-  disagree on gate shape.
+- **`apps/web/src/game/tracks/geometry.js` and `apps/api/prisma/seed.js`
+  must stay in sync** — both generate the same centerline curve + ribbon
+  width per track from identical formulas. The client plays against
+  `geometry.js`; the server's anti-cheat replay (`apps/api/src/services/scores.service.js`)
+  replays against whatever's stored in the `tracks.config` column, which
+  `seed.js` populates. If you change a track's curve or `ribbonWidth`,
+  update both files and re-seed (`npm run prisma:seed` in `apps/api`), or
+  the client and server will disagree on where the track edge is.
 - **Prisma 7 requires a driver adapter.** There's no bare
   `DATABASE_URL` client anymore — `apps/api/src/lib/prisma.js` wires
   `@prisma/adapter-pg` explicitly. If you ever regenerate the Prisma

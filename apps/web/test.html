@@ -42,7 +42,7 @@
   </head>
   <body>
     <h1>Engine test harness</h1>
-    <p>Click the canvas repeatedly to drift toward each gate. No React involved.</p>
+    <p>Hold ← or → to drift — press either to start. Stray off the track and the run ends. No React involved.</p>
 
     <div id="controls">
       <label>
@@ -54,7 +54,6 @@
 
     <div id="hud">
       <span>Score: <span id="score">0</span></span>
-      <span>Gates: <span id="gates">0/0</span></span>
       <span>Time: <span id="time">0.0s</span></span>
     </div>
     <div id="status"></div>
@@ -69,7 +68,6 @@
       const select = document.getElementById('track-select');
       const restartBtn = document.getElementById('restart');
       const scoreEl = document.getElementById('score');
-      const gatesEl = document.getElementById('gates');
       const timeEl = document.getElementById('time');
       const statusEl = document.getElementById('status');
 
@@ -86,23 +84,18 @@
         engine?.stop();
         statusEl.textContent = '';
         scoreEl.textContent = '0';
-        const track = getTrackById(select.value);
-        gatesEl.textContent = `0/${track.gates.length}`;
         timeEl.textContent = '0.0s';
+        const track = getTrackById(select.value);
 
         engine = createEngine({
           canvas,
           track,
-          onTick: ({ score, gatesCleared, gatesTotal, elapsedMs }) => {
+          onTick: ({ score, elapsedMs }) => {
             scoreEl.textContent = String(score);
-            gatesEl.textContent = `${gatesCleared}/${gatesTotal}`;
             timeEl.textContent = `${(elapsedMs / 1000).toFixed(1)}s`;
           },
           onCrash: (final) => {
-            statusEl.textContent = `Crashed! Final score ${final.score} (${final.gatesCleared}/${final.gatesTotal} gates)`;
-          },
-          onFinish: (final) => {
-            statusEl.textContent = `Finished! Final score ${final.score} (${final.gatesCleared}/${final.gatesTotal} gates)`;
+            statusEl.textContent = `Crashed! Final score ${final.score} (${(final.durationMs / 1000).toFixed(1)}s survived)`;
           },
         });
         engine.start();

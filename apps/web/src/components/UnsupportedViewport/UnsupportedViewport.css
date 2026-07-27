@@ -1,0 +1,15 @@
+.unsupported-viewport {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.unsupported-viewport p {
+  max-width: 32rem;
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-text);
+}

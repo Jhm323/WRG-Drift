@@ -28,6 +28,12 @@
   color: var(--color-text-muted);
 }
 
+.leaderboard__table-wrap {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 0.25rem 0.75rem;
+}
+
 .leaderboard__table {
   width: 100%;
   border-collapse: collapse;
@@ -50,10 +56,21 @@
   background: rgba(58, 134, 255, 0.12);
 }
 
+/* Gold is reserved for 1st place only, so it reads as a "you're winning"
+   signal rather than a decorative accent used across the table. */
+.leaderboard__row--first {
+  box-shadow: inset 3px 0 0 var(--color-victory-gold);
+}
+
 .leaderboard__rank {
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
   width: 2.5rem;
+}
+
+.leaderboard__rank--first {
+  color: var(--color-victory-gold);
+  font-weight: 700;
 }
 
 .leaderboard__avatar {

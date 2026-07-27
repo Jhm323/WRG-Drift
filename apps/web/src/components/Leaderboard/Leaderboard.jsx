@@ -83,39 +83,43 @@ export function Leaderboard() {
       )}
 
       {!loading && !error && board?.standings.length > 0 && (
-        <table className="leaderboard__table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th></th>
-              <th>Name</th>
-              <th>Best score</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {board.standings.map((entry) => (
-              <tr
-                key={entry.userId}
-                className={
-                  entry.userId === user?.id
-                    ? 'leaderboard__row leaderboard__row--highlighted'
-                    : 'leaderboard__row'
-                }
-              >
-                <td className="leaderboard__rank">{entry.rank}</td>
-                <td>
-                  <img className="leaderboard__avatar" src={entry.avatarUrl} alt="" />
-                </td>
-                <td className="leaderboard__name">{entry.displayName}</td>
-                <td className="leaderboard__score">{entry.bestScore}</td>
-                <td>
-                  <RankChange rankChange={entry.rankChange} />
-                </td>
+        <div className="leaderboard__table-wrap">
+          <table className="leaderboard__table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th></th>
+                <th>Name</th>
+                <th>Best score</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {board.standings.map((entry) => {
+                const isFirst = entry.rank === 1;
+                const rowClasses = ['leaderboard__row'];
+                if (entry.userId === user?.id) rowClasses.push('leaderboard__row--highlighted');
+                if (isFirst) rowClasses.push('leaderboard__row--first');
+
+                return (
+                  <tr key={entry.userId} className={rowClasses.join(' ')}>
+                    <td className={isFirst ? 'leaderboard__rank leaderboard__rank--first' : 'leaderboard__rank'}>
+                      {entry.rank}
+                    </td>
+                    <td>
+                      <img className="leaderboard__avatar" src={entry.avatarUrl} alt="" />
+                    </td>
+                    <td className="leaderboard__name">{entry.displayName}</td>
+                    <td className="leaderboard__score">{entry.bestScore}</td>
+                    <td>
+                      <RankChange rankChange={entry.rankChange} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

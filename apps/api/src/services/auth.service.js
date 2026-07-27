@@ -9,6 +9,10 @@ const DIRTCAR_DOMAIN = '@dirtcar.com';
 const PASSWORD_HASH_ROUNDS = 12;
 const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
+// TEMP: email verification disabled — blocked on dirtcar.com DNS access, see [ticket/note].
+// Remove when SKIP_EMAIL_VERIFICATION is no longer needed.
+const SKIP_EMAIL_VERIFICATION = process.env.SKIP_EMAIL_VERIFICATION === 'true';
+
 export const JWT_COOKIE_NAME = 'token';
 export const JWT_EXPIRY = '30d';
 export const JWT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -34,6 +38,9 @@ export async function signup({ email, password, displayName, avatarUrl }) {
         displayName,
         avatarUrl,
         verificationToken,
+        // TEMP: email verification disabled — blocked on dirtcar.com DNS access, see [ticket/note].
+        // Remove when SKIP_EMAIL_VERIFICATION is no longer needed.
+        emailVerified: SKIP_EMAIL_VERIFICATION,
       },
     });
   } catch (error) {
@@ -66,7 +73,9 @@ export async function login({ email, password }) {
     throw new HttpError(401, 'Invalid email or password');
   }
 
-  if (!user.emailVerified) {
+  // TEMP: email verification disabled — blocked on dirtcar.com DNS access, see [ticket/note].
+  // Remove when SKIP_EMAIL_VERIFICATION is no longer needed.
+  if (!SKIP_EMAIL_VERIFICATION && !user.emailVerified) {
     throw new HttpError(403, 'Please verify your email before logging in');
   }
 

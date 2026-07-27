@@ -23,7 +23,17 @@ function serverChecksumFor({ userId, trackId, score, durationMs }) {
 // shared scoring function the client used for live feedback, and persists
 // *that* result — the client-reported score (if any) is only used as a
 // tamper check.
-export async function submitRun({ userId, trackId, keyEvents, clientScore }) {
+//
+// `stopAtMs` bounds that replay to the same instant the client's own run
+// ended (crash or voluntary "End run" — engine.js's finish() sends this
+// alongside keyEvents for both). Without it, a run that ended voluntarily
+// (not via a crash) would replay unbounded here, continuing to drive the
+// last held key forward well past the moment the player actually stopped —
+// producing a different score than what they saw and submitted, and very
+// likely failing the tolerance check below. For a crash, bounding at
+// `stopAtMs` changes nothing: the crash already happened at or before that
+// point, so the replay still halts at the exact same instant.
+export async function submitRun({ userId, trackId, keyEvents, clientScore, stopAtMs }) {
   const track = await prisma.track.findUnique({ where: { id: trackId } });
   if (!track) {
     throw new HttpError(404, 'Unknown track');
@@ -33,9 +43,14 @@ export async function submitRun({ userId, trackId, keyEvents, clientScore }) {
     pointsMultiplier: track.pointsMultiplier,
     curve: track.config.curve,
     ribbonWidth: track.config.ribbonWidth,
+    wrapAtEnd: track.config.wrapAtEnd,
   };
 
-  const authoritative = computeScore(trackForScoring, keyEvents);
+  const authoritative = computeScore(
+    trackForScoring,
+    keyEvents,
+    typeof stopAtMs === 'number' ? { stopAtMs } : {},
+  );
 
   if (
     typeof clientScore === 'number' &&

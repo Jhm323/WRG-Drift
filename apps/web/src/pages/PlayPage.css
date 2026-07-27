@@ -1,8 +1,20 @@
 .play-page__hud {
   display: flex;
+  align-items: center;
   gap: 1.5rem;
   margin-bottom: 0.75rem;
   font-variant-numeric: tabular-nums;
+}
+
+.play-page__end-run {
+  margin-left: auto;
+  padding: 0.375rem 0.875rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.875rem;
 }
 
 .play-page__canvas-wrap {
@@ -19,6 +31,10 @@
 
 .play-page__result--crashed {
   background: rgba(230, 57, 70, 0.15);
+}
+
+.play-page__result--ended {
+  background: rgba(58, 134, 255, 0.15);
 }
 
 .play-page__result-headline {

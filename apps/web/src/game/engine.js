@@ -30,6 +30,12 @@ const CENTERLINE_COLOR = '#F5E6D3';
 
 const MAX_CANVAS_DIMENSION_PX = 800;
 
+// How long the "next lap" transition takes to fade back in after a wrap
+// (drift.js's wrapAtEnd teleport). Cuts to black instantly at the wrap
+// instant — hiding the teleport's positional pop — then fades in, reading
+// as a deliberate lap transition rather than a glitch.
+const WRAP_FADE_IN_MS = 350;
+
 // Derives a canvas size from this specific track's own shape — a tall
 // narrow track (Switchback Canyon) gets a tall narrow canvas, a wide one
 // (Figure-8) gets a wide canvas — instead of forcing every track into the
@@ -70,7 +76,7 @@ function computeFitTransform(points, width, height, padding = 40) {
   };
 }
 
-function render(ctx, canvas, track, trackIndex, transform, result, carImage) {
+function render(ctx, canvas, track, trackIndex, transform, result, carImage, wrapFadeAlpha = 0) {
   const toScreen = (p) => ({
     x: p.x * transform.scale + transform.offsetX,
     y: p.y * transform.scale + transform.offsetY,
@@ -141,9 +147,14 @@ function render(ctx, canvas, track, trackIndex, transform, result, carImage) {
     CAR_ICON_LENGTH_PX,
   );
   ctx.restore();
+
+  if (wrapFadeAlpha > 0) {
+    ctx.fillStyle = `rgba(0, 0, 0, ${wrapFadeAlpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 }
 
-export function createEngine({ canvas, track, onTick, onCrash }) {
+export function createEngine({ canvas, track, onTick, onEnd }) {
   const ctx = canvas.getContext('2d');
   const trackIndex = buildTrackIndex(track);
   // Padding must clear the ribbon's own half-width, or a thick ribbon can
@@ -157,14 +168,45 @@ export function createEngine({ canvas, track, onTick, onCrash }) {
   let startTime = null;
   let rafId = null;
   let ended = false;
+  let started = false;
   let detachInput = null;
+
+  // Shared by both ways a run finishes — crashing (tick(), below) and a
+  // voluntary "End run" (endRun(), returned below) — so score submission
+  // is computed identically either way instead of duplicated per path.
+  // Bounding at "now" rather than replaying to a natural crash still
+  // reproduces the exact same crash for the crash path (the crash already
+  // happened at or before "now" by construction) while correctly freezing
+  // a voluntary end at the instant it was requested, instead of continuing
+  // to drive the recorded input forward past that point.
+  function finish() {
+    ended = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    detachInput?.();
+    const stopAtMs = performance.now() - startTime;
+    const final = computeScore(track, keyEvents, { stopAtMs });
+    // keyEvents (plus the exact stopAtMs bound used to compute this result)
+    // ship alongside the client-computed score because that's the actual
+    // anti-cheat payload: the server recomputes the authoritative score
+    // from these, not from `final`, and needs the same bound to avoid
+    // replaying a voluntary end's input further than the client did.
+    onEnd?.({ ...final, stopAtMs, keyEvents: [...keyEvents] });
+  }
 
   function tick(now) {
     if (ended) return;
     const elapsedMs = now - startTime;
     const result = simulateRun(track, trackIndex, keyEvents, { stopAtMs: elapsedMs });
-    render(ctx, canvas, track, trackIndex, transform, result, carImage);
 
+    const lastWrapMs = result.wrapEventsMs.length
+      ? result.wrapEventsMs[result.wrapEventsMs.length - 1]
+      : null;
+    const sinceWrapMs = lastWrapMs != null ? elapsedMs - lastWrapMs : Infinity;
+    const wrapFadeAlpha = sinceWrapMs < WRAP_FADE_IN_MS ? 1 - sinceWrapMs / WRAP_FADE_IN_MS : 0;
+
+    render(ctx, canvas, track, trackIndex, transform, result, carImage, wrapFadeAlpha);
+
+    started = result.started;
     onTick?.({
       score: scoreFromSurvivalMs(track, result.survivalMs),
       elapsedMs: result.survivalMs,
@@ -172,13 +214,7 @@ export function createEngine({ canvas, track, onTick, onCrash }) {
     });
 
     if (result.crashed) {
-      ended = true;
-      detachInput?.();
-      const final = computeScore(track, keyEvents);
-      // keyEvents ships alongside the client-computed score because that's
-      // the actual anti-cheat payload: the server recomputes the
-      // authoritative score from these, not from `final`.
-      onCrash?.({ ...final, keyEvents: [...keyEvents] });
+      finish();
       return;
     }
 
@@ -188,6 +224,7 @@ export function createEngine({ canvas, track, onTick, onCrash }) {
   return {
     start() {
       ended = false;
+      started = false;
       keyEvents = [];
       startTime = performance.now();
       detachInput = attachKeyboardInput((event) => {
@@ -199,6 +236,14 @@ export function createEngine({ canvas, track, onTick, onCrash }) {
       ended = true;
       if (rafId) cancelAnimationFrame(rafId);
       detachInput?.();
+    },
+    // Voluntary "End run" — lets a player submit their score without
+    // crashing, via the same `finish()` path (see above) so the submitted
+    // score matches exactly what was on screen at the moment they chose
+    // to stop, no more and no less.
+    endRun() {
+      if (ended || !started) return;
+      finish();
     },
   };
 }

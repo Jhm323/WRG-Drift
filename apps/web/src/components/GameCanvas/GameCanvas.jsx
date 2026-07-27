@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { createEngine, computeTrackCanvasSize } from '../../game/engine.js';
 import './GameCanvas.css';
 
@@ -11,8 +11,11 @@ const COMPACT_HINT_CANVAS_WIDTH_PX = 300;
 // Thin React wrapper around the framework-agnostic engine (apps/web/src/game).
 // All game logic lives there — this component only owns the canvas element's
 // lifecycle, forwards engine callbacks as props, and shows the pre-start hint.
-export function GameCanvas({ track, onTick, onCrash }) {
+// Exposes `endRun()` via ref so a parent-owned control (button, Escape key)
+// can trigger a voluntary end without reaching into the engine itself.
+export const GameCanvas = forwardRef(function GameCanvas({ track, onTick, onEnd }, ref) {
   const canvasRef = useRef(null);
+  const engineRef = useRef(null);
   const [started, setStarted] = useState(false);
   // Each track gets a canvas sized to its own bounding box (see
   // computeTrackCanvasSize) rather than one fixed size shared across
@@ -23,6 +26,10 @@ export function GameCanvas({ track, onTick, onCrash }) {
     [track],
   );
 
+  useImperativeHandle(ref, () => ({
+    endRun: () => engineRef.current?.endRun(),
+  }));
+
   useEffect(() => {
     const engine = createEngine({
       canvas: canvasRef.current,
@@ -31,10 +38,14 @@ export function GameCanvas({ track, onTick, onCrash }) {
         setStarted(stats.started);
         onTick?.(stats);
       },
-      onCrash,
+      onEnd,
     });
+    engineRef.current = engine;
     engine.start();
-    return () => engine.stop();
+    return () => {
+      engine.stop();
+      engineRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restart only when the track changes, not on every callback identity change
   }, [track]);
 
@@ -50,4 +61,4 @@ export function GameCanvas({ track, onTick, onCrash }) {
       )}
     </div>
   );
-}
+});

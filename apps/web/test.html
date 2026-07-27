@@ -50,6 +50,7 @@
         <select id="track-select"></select>
       </label>
       <button id="restart">Restart</button>
+      <button id="end-run">End run (Esc)</button>
     </div>
 
     <div id="hud">
@@ -67,6 +68,7 @@
       const canvas = document.getElementById('canvas');
       const select = document.getElementById('track-select');
       const restartBtn = document.getElementById('restart');
+      const endRunBtn = document.getElementById('end-run');
       const scoreEl = document.getElementById('score');
       const timeEl = document.getElementById('time');
       const statusEl = document.getElementById('status');
@@ -94,8 +96,10 @@
             scoreEl.textContent = String(score);
             timeEl.textContent = `${(elapsedMs / 1000).toFixed(1)}s`;
           },
-          onCrash: (final) => {
-            statusEl.textContent = `Crashed! Final score ${final.score} (${(final.durationMs / 1000).toFixed(1)}s survived)`;
+          onEnd: (final) => {
+            statusEl.textContent = final.crashed
+              ? `Crashed! Final score ${final.score} (${(final.durationMs / 1000).toFixed(1)}s survived)`
+              : `Run ended! Final score ${final.score} (${(final.durationMs / 1000).toFixed(1)}s)`;
           },
         });
         engine.start();
@@ -104,6 +108,10 @@
       select.value = TRACKS[0].id;
       select.addEventListener('change', run);
       restartBtn.addEventListener('click', run);
+      endRunBtn.addEventListener('click', () => engine?.endRun());
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') engine?.endRun();
+      });
       run();
     </script>
   </body>

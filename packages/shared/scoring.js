@@ -14,10 +14,15 @@ export function scoreFromSurvivalMs(track, survivalMs) {
 }
 
 // The pure function: (track config, key events) -> final result. Replays
-// the run to its natural end (crash), not bounded to "now".
-export function computeScore(track, keyEvents) {
+// the run to its natural end (crash) by default. Pass `{ stopAtMs }` to
+// freeze the replay at a specific instant instead — used for a voluntary
+// "End run": without it, replaying the log unbounded would keep driving
+// the car forward on the last held key past the moment the player clicked
+// stop, and could crash (or rack up more score) *after* the point they
+// asked to end at.
+export function computeScore(track, keyEvents, options = {}) {
   const trackIndex = buildTrackIndex(track);
-  const result = simulateRun(track, trackIndex, keyEvents);
+  const result = simulateRun(track, trackIndex, keyEvents, options);
 
   return {
     score: scoreFromSurvivalMs(track, result.survivalMs),

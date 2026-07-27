@@ -72,7 +72,10 @@ function switchbackCanyonTrack() {
 
   const curve = Array.from({ length: 80 }, (_, i) => pointAtFraction(i / 79));
 
-  return { curve, ribbonWidth: 105 };
+  // Non-looping path — mirrors apps/web/src/game/tracks/switchback-canyon.js's
+  // wrapAtEnd flag, so the server's anti-cheat replay wraps to the start
+  // instead of crashing at the same point the client does.
+  return { curve, ribbonWidth: 105, wrapAtEnd: true };
 }
 
 const tracks = [

@@ -16,21 +16,25 @@ export const TURN_DECAY_RAD_PER_S2 = Math.PI * 1.25; // ~0.4s to bleed off resid
 export const FIXED_DT_MS = 10;
 const MAX_STEPS = 30000; // ~5 min of simulated time — safety cap, not a game limit
 
-// Shortest distance from `point` to the track's centerline polyline.
-function distanceToCurve(curve, point) {
-  let best = Infinity;
+// Shortest distance from `point` to the track's centerline polyline, plus
+// which segment won and that segment's *unclamped* projection fraction —
+// the latter is what tells a non-looping track's wrap check "the car is
+// past the final waypoint" rather than merely "off to the side of some
+// interior segment" (t clamped to [0,1] only for the distance itself).
+function nearestPointOnCurve(curve, point) {
+  let best = { distance: Infinity, segmentIndex: -1, t: 0 };
   for (let i = 0; i < curve.length - 1; i += 1) {
     const p0 = curve[i];
     const p1 = curve[i + 1];
     const dx = p1.x - p0.x;
     const dy = p1.y - p0.y;
     const lenSq = dx * dx + dy * dy || 1;
-    let t = ((point.x - p0.x) * dx + (point.y - p0.y) * dy) / lenSq;
-    t = Math.min(Math.max(t, 0), 1);
+    const rawT = ((point.x - p0.x) * dx + (point.y - p0.y) * dy) / lenSq;
+    const t = Math.min(Math.max(rawT, 0), 1);
     const projX = p0.x + dx * t;
     const projY = p0.y + dy * t;
     const dist = Math.hypot(point.x - projX, point.y - projY);
-    if (dist < best) best = dist;
+    if (dist < best.distance) best = { distance: dist, segmentIndex: i, t: rawT };
   }
   return best;
 }
@@ -50,7 +54,11 @@ export function buildTrackIndex(track) {
 // (both held targets 0, i.e. cancels out) and decays back toward 0 once
 // released, rather than snapping straight to a fixed rate. Ends the instant
 // the car strays outside the track ribbon, or at `stopAtMs`, whichever
-// comes first.
+// comes first — unless `track.wrapAtEnd` is set and the car has driven
+// past the final waypoint (not just off to the side mid-track), in which
+// case it's teleported back to the start and the run keeps going instead
+// of crashing; each such moment's timestamp is recorded in `wrapEventsMs`
+// so a renderer can draw a brief transition around it.
 export function simulateRun(track, trackIndex, keyEvents, options = {}) {
   const stopAtMs = options.stopAtMs ?? Infinity;
   const { curve, ribbonWidth } = trackIndex;
@@ -58,7 +66,8 @@ export function simulateRun(track, trackIndex, keyEvents, options = {}) {
 
   const p0 = curve[0];
   const p1 = curve[1] ?? curve[0];
-  let heading = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  const startHeading = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  let heading = startHeading;
   let x = p0.x;
   let y = p0.y;
 
@@ -70,6 +79,8 @@ export function simulateRun(track, trackIndex, keyEvents, options = {}) {
   let eventCursor = 0;
   let crashed = false;
   let crashedAtMs = null;
+  const wrapEventsMs = [];
+  const lastSegmentIndex = curve.length - 2;
 
   let tMs = 0;
   let steps = 0;
@@ -112,10 +123,20 @@ export function simulateRun(track, trackIndex, keyEvents, options = {}) {
     x += Math.cos(heading) * BASE_SPEED_PX_PER_S * dtSec;
     y += Math.sin(heading) * BASE_SPEED_PX_PER_S * dtSec;
 
-    if (distanceToCurve(curve, { x, y }) > ribbonWidth / 2) {
-      crashed = true;
-      crashedAtMs = tMs;
-      break;
+    const nearest = nearestPointOnCurve(curve, { x, y });
+    if (nearest.distance > ribbonWidth / 2) {
+      const pastFinalWaypoint = nearest.segmentIndex === lastSegmentIndex && nearest.t > 1;
+      if (track.wrapAtEnd && pastFinalWaypoint) {
+        x = p0.x;
+        y = p0.y;
+        heading = startHeading;
+        angularVelocity = 0;
+        wrapEventsMs.push(tMs);
+      } else {
+        crashed = true;
+        crashedAtMs = tMs;
+        break;
+      }
     }
 
     tMs += FIXED_DT_MS;
@@ -136,5 +157,6 @@ export function simulateRun(track, trackIndex, keyEvents, options = {}) {
     crashed,
     crashedAtMs,
     survivalMs,
+    wrapEventsMs,
   };
 }

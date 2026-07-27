@@ -29,12 +29,21 @@
   max-width: 800px;
 }
 
+/* Opaque (tinted --color-surface), not a translucent rgba over the page
+   background — this panel holds a --color-accent link ("Back to tracks"),
+   and tinting against the page background directly would make its contrast
+   depend on whatever's behind the page (now the track-day image). Mixing
+   into the same opaque surface every other card uses keeps it consistent
+   regardless of what the global background ever becomes. Plain
+   background-color first as a fallback for browsers without color-mix(). */
 .play-page__result--crashed {
-  background: rgba(230, 57, 70, 0.15);
+  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
 }
 
 .play-page__result--ended {
-  background: rgba(58, 134, 255, 0.15);
+  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
 }
 
 .play-page__result-headline {

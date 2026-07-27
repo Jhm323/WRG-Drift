@@ -16,9 +16,25 @@
 
 body {
   margin: 0;
-  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  /* Track-day illustration behind the whole app, every page — dimmed by a
+     flat dark layer stacked on top (first background-image wins) rather
+     than opacity on the element itself, which would fade foreground
+     content too. 85% keeps it a subtle textured backdrop, not a poster;
+     verified via contrast math (see PR notes) that h1s/body text/links
+     still clear WCAG AA even over the image's brightest patch — opaque
+     cards (forms, leaderboard table) are unaffected either way since
+     nothing shows through an opaque background regardless of what's
+     behind it. */
+  background-image:
+    linear-gradient(rgba(20, 22, 26, 0.85), rgba(20, 22, 26, 0.85)),
+    url('../assets/backgrounds/track-day-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 input,

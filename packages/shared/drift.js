@@ -5,7 +5,14 @@
 // inputs, same output, every time.
 
 export const BASE_SPEED_PX_PER_S = 160;
-export const TURN_RATE_RAD_PER_S = Math.PI / 2; // 90deg/s while a turn key is held; both held cancels out
+// Turning has drag, not an instant snap: angular velocity ramps toward
+// MAX_TURN_RATE_RAD_PER_S while a direction key is held (both held cancels
+// out, targeting 0) and bleeds off toward 0 at TURN_DECAY_RAD_PER_S2 once
+// released — so the car keeps drifting briefly after letting go instead of
+// immediately going straight. Retune these three per playtest.
+export const MAX_TURN_RATE_RAD_PER_S = Math.PI / 2; // ceiling on angular velocity — 90deg/s, same top-end as the old instant-turn version
+export const TURN_RAMP_UP_RAD_PER_S2 = Math.PI * 2.5; // ~0.2s from 0 to max while held
+export const TURN_DECAY_RAD_PER_S2 = Math.PI * 1.25; // ~0.4s to bleed off residual angular velocity after release
 export const FIXED_DT_MS = 10;
 const MAX_STEPS = 30000; // ~5 min of simulated time — safety cap, not a game limit
 
@@ -38,10 +45,12 @@ export function buildTrackIndex(track) {
 // Replays keyEvents — chronological { type: 'down' | 'up', key: 'ArrowLeft'
 // | 'ArrowRight', atMs } transitions — from a standing start at the track's
 // first curve point. The car sits still (timer included) until the first
-// event, then drives forward forever at a constant speed, turning at a
-// fixed angular rate while a direction key is held (both held cancels out,
-// neither held goes straight). Ends the instant the car strays outside the
-// track ribbon, or at `stopAtMs`, whichever comes first.
+// event, then drives forward forever at a constant speed. Turning has drag:
+// angular velocity ramps toward the max rate while a direction key is held
+// (both held targets 0, i.e. cancels out) and decays back toward 0 once
+// released, rather than snapping straight to a fixed rate. Ends the instant
+// the car strays outside the track ribbon, or at `stopAtMs`, whichever
+// comes first.
 export function simulateRun(track, trackIndex, keyEvents, options = {}) {
   const stopAtMs = options.stopAtMs ?? Infinity;
   const { curve, ribbonWidth } = trackIndex;
@@ -55,6 +64,7 @@ export function simulateRun(track, trackIndex, keyEvents, options = {}) {
 
   let leftHeld = false;
   let rightHeld = false;
+  let angularVelocity = 0; // rad/s, signed — positive turns right
   let started = false;
   let startedAtMs = null;
   let eventCursor = 0;
@@ -85,8 +95,20 @@ export function simulateRun(track, trackIndex, keyEvents, options = {}) {
     }
 
     const dtSec = FIXED_DT_MS / 1000;
-    const turn = (rightHeld ? 1 : 0) - (leftHeld ? 1 : 0);
-    heading += turn * TURN_RATE_RAD_PER_S * dtSec;
+    const turnInput = (rightHeld ? 1 : 0) - (leftHeld ? 1 : 0);
+    if (turnInput !== 0) {
+      const targetRate = turnInput * MAX_TURN_RATE_RAD_PER_S;
+      if (angularVelocity < targetRate) {
+        angularVelocity = Math.min(targetRate, angularVelocity + TURN_RAMP_UP_RAD_PER_S2 * dtSec);
+      } else if (angularVelocity > targetRate) {
+        angularVelocity = Math.max(targetRate, angularVelocity - TURN_RAMP_UP_RAD_PER_S2 * dtSec);
+      }
+    } else if (angularVelocity > 0) {
+      angularVelocity = Math.max(0, angularVelocity - TURN_DECAY_RAD_PER_S2 * dtSec);
+    } else if (angularVelocity < 0) {
+      angularVelocity = Math.min(0, angularVelocity + TURN_DECAY_RAD_PER_S2 * dtSec);
+    }
+    heading += angularVelocity * dtSec;
     x += Math.cos(heading) * BASE_SPEED_PX_PER_S * dtSec;
     y += Math.sin(heading) * BASE_SPEED_PX_PER_S * dtSec;
 

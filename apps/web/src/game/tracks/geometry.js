@@ -18,7 +18,7 @@ export function ovalGeometry() {
     pointAt((i / curvePoints) * Math.PI * 2),
   );
 
-  return { curve, ribbonWidth: 140 };
+  return { curve, ribbonWidth: 70 };
 }
 
 export function figureEightGeometry() {

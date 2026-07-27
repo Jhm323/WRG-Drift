@@ -1,12 +1,16 @@
 .game-canvas-wrap {
   position: relative;
-  display: inline-block;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   max-width: 100%;
 }
 
 .game-canvas {
   display: block;
   max-width: 100%;
+  max-height: 70vh;
+  width: auto;
   height: auto;
   border: 1px solid #2a2d33;
   border-radius: 8px;
@@ -26,4 +30,14 @@
   font-weight: 600;
   text-align: center;
   pointer-events: none;
+}
+
+.game-canvas__hint--compact {
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  /* Without this, the narrow containing block constrains this abspos +
+     translate(-50%)-centered element's shrink-to-fit width calculation
+     before centering is applied, wrapping text that would otherwise
+     easily fit on one line. */
+  white-space: nowrap;
 }

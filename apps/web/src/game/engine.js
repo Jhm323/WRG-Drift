@@ -21,6 +21,37 @@ const CAR_ICON_SOURCE_HEIGHT = 99;
 const CAR_ICON_LENGTH_PX = 18;
 const CAR_ICON_WIDTH_PX = CAR_ICON_LENGTH_PX * (CAR_ICON_SOURCE_WIDTH / CAR_ICON_SOURCE_HEIGHT);
 
+const BACKGROUND_COLOR_NEAR = '#6B9B4F'; // grass, lighter near the track
+const BACKGROUND_COLOR_FAR = '#4C7A3D'; // grass, darker toward canvas edges
+const TRACK_SURFACE_COLOR = '#C08552'; // dirt
+const TRACK_EDGE_COLOR = '#8B5E3C'; // boundary band — this is the actual crash edge (ribbonWidth/2 from centerline), needs to read clearly
+const TRACK_EDGE_BAND_FRACTION = 0.15; // per edge, as a fraction of the full ribbon width
+const CENTERLINE_COLOR = '#F5E6D3';
+
+const MAX_CANVAS_DIMENSION_PX = 800;
+
+// Derives a canvas size from this specific track's own shape — a tall
+// narrow track (Switchback Canyon) gets a tall narrow canvas, a wide one
+// (Figure-8) gets a wide canvas — instead of forcing every track into the
+// same fixed box, which wastes most of the canvas on tracks whose natural
+// aspect ratio doesn't match. Bounds include the ribbon's half-width on
+// every side, since the drivable surface's actual edges (not just the
+// centerline waypoints) are what needs to fit. The longer axis is capped
+// at maxDimension; the other scales down with it to preserve aspect ratio.
+export function computeTrackCanvasSize(track, maxDimension = MAX_CANVAS_DIMENSION_PX) {
+  const xs = track.curve.map((p) => p.x);
+  const ys = track.curve.map((p) => p.y);
+  const halfRibbon = track.ribbonWidth / 2;
+  const spanX = Math.max(...xs) - Math.min(...xs) + halfRibbon * 2 || 1;
+  const spanY = Math.max(...ys) - Math.min(...ys) + halfRibbon * 2 || 1;
+  const scale = maxDimension / Math.max(spanX, spanY);
+
+  return {
+    width: Math.round(spanX * scale),
+    height: Math.round(spanY * scale),
+  };
+}
+
 function computeFitTransform(points, width, height, padding = 40) {
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -45,7 +76,20 @@ function render(ctx, canvas, track, trackIndex, transform, result, carImage) {
     y: p.y * transform.scale + transform.offsetY,
   });
 
-  ctx.fillStyle = '#14161a';
+  const bgCenterX = canvas.width / 2;
+  const bgCenterY = canvas.height / 2;
+  const bgRadius = Math.hypot(bgCenterX, bgCenterY);
+  const backgroundGradient = ctx.createRadialGradient(
+    bgCenterX,
+    bgCenterY,
+    0,
+    bgCenterX,
+    bgCenterY,
+    bgRadius,
+  );
+  backgroundGradient.addColorStop(0, BACKGROUND_COLOR_NEAR);
+  backgroundGradient.addColorStop(1, BACKGROUND_COLOR_FAR);
+  ctx.fillStyle = backgroundGradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.beginPath();
@@ -54,12 +98,24 @@ function render(ctx, canvas, track, trackIndex, transform, result, carImage) {
     if (i === 0) ctx.moveTo(s.x, s.y);
     else ctx.lineTo(s.x, s.y);
   });
-  ctx.strokeStyle = '#2a2d33';
-  ctx.lineWidth = Math.max(2, trackIndex.ribbonWidth * transform.scale);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+
+  const ribbonWidthPx = Math.max(2, trackIndex.ribbonWidth * transform.scale);
+  const edgeBandPx = ribbonWidthPx * TRACK_EDGE_BAND_FRACTION;
+  const surfaceWidthPx = Math.max(1, ribbonWidthPx - edgeBandPx * 2);
+
+  // Boundary band, drawn full ribbon width first so it peeks out on both
+  // sides once the narrower surface stroke goes on top of it.
+  ctx.strokeStyle = TRACK_EDGE_COLOR;
+  ctx.lineWidth = ribbonWidthPx;
   ctx.stroke();
-  ctx.strokeStyle = '#4a5058';
+
+  ctx.strokeStyle = TRACK_SURFACE_COLOR;
+  ctx.lineWidth = surfaceWidthPx;
+  ctx.stroke();
+
+  ctx.strokeStyle = CENTERLINE_COLOR;
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 6]);
   ctx.stroke();
@@ -90,7 +146,10 @@ function render(ctx, canvas, track, trackIndex, transform, result, carImage) {
 export function createEngine({ canvas, track, onTick, onCrash }) {
   const ctx = canvas.getContext('2d');
   const trackIndex = buildTrackIndex(track);
-  const transform = computeFitTransform(track.curve, canvas.width, canvas.height);
+  // Padding must clear the ribbon's own half-width, or a thick ribbon can
+  // bleed past the fitted curve's edge and off the canvas.
+  const fitPadding = Math.max(40, trackIndex.ribbonWidth / 2 + 10);
+  const transform = computeFitTransform(track.curve, canvas.width, canvas.height, fitPadding);
   const carImage = new Image();
   carImage.src = carIconUrl;
 

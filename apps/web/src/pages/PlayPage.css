@@ -6,7 +6,8 @@
 }
 
 .play-page__canvas-wrap {
-  max-width: 800px;
+  display: flex;
+  justify-content: center;
 }
 
 .play-page__result {

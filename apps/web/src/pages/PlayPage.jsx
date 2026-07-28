@@ -43,24 +43,46 @@ export function PlayPage() {
     gameCanvasRef.current?.endRun();
   }, []);
 
+  const playAgain = useCallback(() => {
+    setResult(null);
+    setSaveStatus(null);
+    setLive({ score: 0, elapsedMs: 0, started: false });
+    setRunKey((key) => key + 1);
+  }, []);
+
   // Escape ends the run without reaching for the mouse — the game is
-  // otherwise entirely keyboard-driven (Arrow keys). Engine.js's endRun()
-  // already no-ops if the run hasn't started or already ended, so no need
-  // to duplicate that guard here.
+  // otherwise entirely keyboard-driven (Arrow keys). Scoped to `!result` so
+  // this is only ever attached during a live run. Combined with the
+  // "any key restarts" effect below (scoped to `result`), exactly one of
+  // these two keydown listeners is attached at any given moment, never
+  // both — `result` and `!result` can't both hold, so the two can't fire
+  // for the same keypress. This is enforced structurally by the effects'
+  // own guards, not left to engine.js's endRun() no-op as a backstop.
   useEffect(() => {
+    if (result) return undefined;
     function handleKeyDown(event) {
       if (event.key === 'Escape') endRun();
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [endRun]);
+  }, [result, endRun]);
 
-  function playAgain() {
-    setResult(null);
-    setSaveStatus(null);
-    setLive({ score: 0, elapsedMs: 0, started: false });
-    setRunKey((key) => key + 1);
-  }
+  // Result screen: any key restarts, not just clicking "Play again" — a
+  // quicker "one more go" loop once the game is over. Scoped to `result`
+  // so it's only attached while a result is showing (never during live
+  // gameplay, where arrow keys drive), and the effect cleanup removes it
+  // the instant `result` clears — via playAgain() here, a crash/end
+  // elsewhere, or the component unmounting — so it can't leak or fire late.
+  // "Back to tracks" is deliberately NOT wired to this: it's a navigation
+  // choice and still requires an actual click on the link.
+  useEffect(() => {
+    if (!result) return undefined;
+    function handleKeyDown() {
+      playAgain();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [result, playAgain]);
 
   if (!track) {
     return (

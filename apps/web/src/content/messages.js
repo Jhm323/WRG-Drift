@@ -37,17 +37,17 @@ export const PR_MESSAGES = {
     "{score} POINTS! NEW BEST! I AM LOSING MY MIND RIGHT NOW!",
   ],
   heckler: [
-    "Oh, a new PR? {score}? Someone give this driver a parade.",
-    "{score}, huh. Guess even a broken clock is right twice a day.",
+    "Oh, a new PR? {score}? If I say congrats, can we do something else?",
+    "{score}, huh. and your still a turd. Congrats, I guess.",
     "New best of {score}. Don't let it go to your head. Too late.",
     "Wow, {score}. Did you practice, or was that an accident?",
     "PR unlocked: {score}. I'm shocked. Genuinely.",
   ],
   outlaw: [
     "F*ckin A! New PR, {score}! Let's ride!",
-    "{score} and a new record. Absolute unit.",
-    "NEW BEST. {score}. Somebody get this driver a trophy.",
-    "PR SMASHED. {score}. Full send, no regrets.",
+    "{score} and a new record. Hell Ya.",
+    "NEW BEST. {score}. Somebody get this F*cker a trophy.",
+    "PR SMASHED. {score}. Bet'chur ass.",
     "{score}! Hell yeah, new record, baby!",
   ],
 };
@@ -77,9 +77,9 @@ export const NOT_PR_MESSAGES = {
   heckler: [
     "{score}. Not your best, but hey, you tried.",
     "Solid-ish. {score}. Your PR is safe for now.",
-    "{score}? Your record isn't shaking in its boots.",
-    "That's a {score}. We've all had off days.",
-    "{score} points. A journey, not a destination.",
+    "{score}? That's a shame.",
+    "That's a {score}. We've all had off days. Not like you, though.",
+    "{score} points. welp. Should i call your mom now?",
   ],
   outlaw: [
     "{score}? That's rookie numbers. Run it back.",
@@ -114,9 +114,9 @@ export const CRASH_MESSAGES = {
   ],
   heckler: [
     "Well that was ugly. {score}, though.",
-    "That's gonna leave a mark. {score} points.",
+    "So sad. {score} points.",
     "Physics: 1, You: 0. {score} points.",
-    "Bold driving choice. {score} points and a wall.",
+    "Bold driving choice. {score} points and the wall.",
     "{score} points, then the wall said hello.",
   ],
   outlaw: [
@@ -159,9 +159,9 @@ export const PRE_START_HINT = {
   ],
   outlaw: [
     "← / → to drift. Don't crash. (You will.)",
-    'Hold ← / → and send it.',
+    'Hold ← / → let that sh*t rip.',
     "Arrow keys steer this beast. Go get 'em.",
-    "← / → to drift. Full send whenever you're ready.",
-    'Hit ← or → and let\'s go. Try not to eat dirt.',
+    "← / → to drift. Just drive, ya winus.",
+    'Hit ← or → and let\'s go. You will eat dirt and you will like it.',
   ],
 };

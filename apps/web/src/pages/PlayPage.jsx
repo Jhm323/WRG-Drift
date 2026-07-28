@@ -84,12 +84,12 @@ export function PlayPage() {
 
   // Escape ends the run without reaching for the mouse — the game is
   // otherwise entirely keyboard-driven (Arrow keys). Scoped to `!result` so
-  // this is only ever attached during a live run. Combined with the
-  // "any key restarts" effect below (scoped to `result`), exactly one of
-  // these two keydown listeners is attached at any given moment, never
-  // both — `result` and `!result` can't both hold, so the two can't fire
-  // for the same keypress. This is enforced structurally by the effects'
-  // own guards, not left to engine.js's endRun() no-op as a backstop.
+  // this is only ever attached during a live run. Combined with the Space
+  // "restart" effect below (scoped to `result`), exactly one of these two
+  // keydown listeners is attached at any given moment, never both —
+  // `result` and `!result` can't both hold, so the two can't fire for the
+  // same keypress. This is enforced structurally by the effects' own
+  // guards, not left to engine.js's endRun() no-op as a backstop.
   useEffect(() => {
     if (result) return undefined;
     function handleKeyDown(event) {
@@ -99,21 +99,65 @@ export function PlayPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [result, endRun]);
 
-  // Result screen: any key restarts, not just clicking "Play again" — a
-  // quicker "one more go" loop once the game is over. Scoped to `result`
-  // so it's only attached while a result is showing (never during live
+  // Live, always-on tracking of whether Space is currently held — not
+  // scoped to `result` — so that when a result screen appears, we can tell
+  // whether Space was already down at that instant (e.g. still held from
+  // ending the previous run) versus freshly pressed afterward. A plain ref,
+  // not state: this never needs to trigger a render on its own.
+  const spaceHeldRef = useRef(false);
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === ' ') spaceHeldRef.current = true;
+    }
+    function handleKeyUp(event) {
+      if (event.key === ' ') spaceHeldRef.current = false;
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Result screen: Space restarts, not just clicking "Play again" — a
+  // quicker "one more go" loop once the game is over. Scoped to `result` so
+  // it's only attached while a result is showing (never during live
   // gameplay, where arrow keys drive), and the effect cleanup removes it
   // the instant `result` clears — via playAgain() here, a crash/end
   // elsewhere, or the component unmounting — so it can't leak or fire late.
   // "Back to tracks" is deliberately NOT wired to this: it's a navigation
   // choice and still requires an actual click on the link.
+  //
+  // Only Space (not "any key") — crashing or ending a run often happens
+  // mid-turn, so an arrow key is frequently still held at that exact
+  // instant, and an "any key" listener would fire on that leftover hold the
+  // moment the result rendered. Space is otherwise unused during play, so
+  // picking it avoids that collision — but the same class of problem can
+  // resurface with Space itself once players learn to mash it (end run,
+  // then immediately restart, all in one continuous press). `armed` guards
+  // against that: it starts false if Space was already down when the
+  // result appeared, and only a real keyup + fresh keydown afterward can
+  // trigger a restart — a held-over or repeat-fired keydown cannot.
   useEffect(() => {
     if (!result) return undefined;
-    function handleKeyDown() {
-      playAgain();
+    let armed = !spaceHeldRef.current;
+
+    function handleKeyDown(event) {
+      if (event.key !== ' ') return;
+      event.preventDefault(); // Space's default is page-scroll / activating a focused button
+      if (armed) playAgain();
     }
+    function handleKeyUp(event) {
+      if (event.key === ' ') armed = true;
+    }
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [result, playAgain]);
 
   if (!track) {

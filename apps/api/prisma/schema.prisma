@@ -21,12 +21,25 @@ enum LeaderboardPeriod {
   monthly
 }
 
+// Which character's voice flavors the run-result/pre-start messages
+// (apps/web/src/content/messages.js) — kept in sync with that file's
+// TONE_LEVELS array by hand, same as this schema already duplicates
+// Difficulty/LeaderboardPeriod rather than sharing enums across workspaces.
+enum ToneLevel {
+  professional
+  knightly
+  hypeMan
+  heckler
+  outlaw
+}
+
 model User {
   id                     String    @id @default(uuid())
   email                  String    @unique
   passwordHash           String    @map("password_hash")
   displayName            String    @map("display_name")
   avatarUrl              String    @map("avatar_url")
+  toneLevel              ToneLevel @default(professional) @map("tone_level")
   emailVerified          Boolean   @default(false) @map("email_verified")
   verificationToken      String?   @unique @map("verification_token")
   passwordResetToken     String?   @unique @map("password_reset_token")

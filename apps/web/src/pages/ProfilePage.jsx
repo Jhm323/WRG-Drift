@@ -3,12 +3,17 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 import { ApiError } from '../api/client.js';
 import { AvatarPicker } from '../components/AvatarPicker/AvatarPicker.jsx';
+import { ToneLevelPicker } from '../components/ToneLevelPicker/ToneLevelPicker.jsx';
 import './ProfilePage.css';
 
 export function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const [displayName, setDisplayName] = useState(user.displayName);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  // Pre-migration/never-set accounts default cleanly to 'professional' —
+  // matches the DB column's own default, so there's no gap between what a
+  // brand-new user sees here and what the server already assumes.
+  const [toneLevel, setToneLevel] = useState(user.toneLevel ?? 'professional');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -19,7 +24,7 @@ export function ProfilePage() {
     setSaved(false);
     setSubmitting(true);
     try {
-      await updateProfile({ displayName, avatarUrl });
+      await updateProfile({ displayName, avatarUrl, toneLevel });
       setSaved(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
@@ -56,6 +61,11 @@ export function ProfilePage() {
         <div className="profile-page__field">
           <span className="profile-page__label">Avatar</span>
           <AvatarPicker value={avatarUrl} onChange={setAvatarUrl} />
+        </div>
+
+        <div className="profile-page__field">
+          <span className="profile-page__label">Character</span>
+          <ToneLevelPicker value={toneLevel} onChange={setToneLevel} />
         </div>
 
         <div className="profile-page__actions">

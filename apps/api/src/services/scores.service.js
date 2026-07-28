@@ -66,7 +66,19 @@ export async function submitRun({ userId, trackId, keyEvents, clientScore, stopA
     durationMs: authoritative.durationMs,
   });
 
-  return prisma.run.create({
+  // Personal-best check, against this user's prior runs on this track only
+  // (any outcome, not just clean ones — a higher score is a higher score
+  // regardless of how the run ended). Queried before the insert below so
+  // the just-created run itself is never compared against; a tie doesn't
+  // count as a new best, only strictly exceeding the prior max does.
+  const priorBest = await prisma.run.aggregate({
+    where: { userId, trackId },
+    _max: { score: true },
+  });
+  const isPersonalBest =
+    priorBest._max.score == null || authoritative.score > priorBest._max.score;
+
+  const run = await prisma.run.create({
     data: {
       userId,
       trackId,
@@ -76,4 +88,6 @@ export async function submitRun({ userId, trackId, keyEvents, clientScore, stopA
       serverChecksum,
     },
   });
+
+  return { run, isPersonalBest };
 }

@@ -1,0 +1,22 @@
+.tone-level-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tone-level-picker__option {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.tone-level-picker__option--selected {
+  background: var(--color-accent);
+  /* Dark text, not white — see LoginForm.css for why. */
+  color: var(--color-bg);
+}

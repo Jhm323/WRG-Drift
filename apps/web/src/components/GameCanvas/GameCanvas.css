@@ -35,9 +35,8 @@
 .game-canvas__hint--compact {
   padding: 0.375rem 0.5rem;
   font-size: 0.75rem;
-  /* Without this, the narrow containing block constrains this abspos +
-     translate(-50%)-centered element's shrink-to-fit width calculation
-     before centering is applied, wrapping text that would otherwise
-     easily fit on one line. */
-  white-space: nowrap;
+  /* Tone messages vary in length, so this wraps (no white-space: nowrap)
+     rather than forcing a single line — a max-width keeps the wrap from
+     stretching edge-to-edge on an already-narrow canvas. */
+  max-width: 80%;
 }

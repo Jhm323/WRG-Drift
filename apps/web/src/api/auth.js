@@ -22,10 +22,11 @@ export function fetchCurrentUser() {
   return apiFetch('/auth/me');
 }
 
-export function updateProfile({ displayName, avatarUrl }) {
+export function updateProfile({ displayName, avatarUrl, toneLevel }) {
   const body = {};
   if (displayName !== undefined) body.displayName = displayName;
   if (avatarUrl !== undefined) body.avatarUrl = avatarUrl;
+  if (toneLevel !== undefined) body.toneLevel = toneLevel;
   return apiFetch('/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(body),

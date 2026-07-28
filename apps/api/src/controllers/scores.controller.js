@@ -22,12 +22,12 @@ export const submitRunSchema = z.object({
 
 export async function submitRun(req, res) {
   const { trackId, keyEvents, score, stopAtMs } = req.body;
-  const run = await scoresService.submitRun({
+  const { run, isPersonalBest } = await scoresService.submitRun({
     userId: req.user.id,
     trackId,
     keyEvents,
     clientScore: score,
     stopAtMs,
   });
-  res.status(201).json({ run });
+  res.status(201).json({ run, isPersonalBest });
 }

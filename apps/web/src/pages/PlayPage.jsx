@@ -1,18 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { GameCanvas } from '../components/GameCanvas/GameCanvas.jsx';
 import { getTrackById } from '../game/tracks/index.js';
 import { submitRun } from '../api/scores.js';
+import { useTone } from '../hooks/useTone.js';
+import { CRASH_MESSAGES, PR_MESSAGES, NOT_PR_MESSAGES } from '../content/messages.js';
 import './PlayPage.css';
 
 export function PlayPage() {
   const { trackId } = useParams();
   const track = getTrackById(trackId);
   const gameCanvasRef = useRef(null);
+  const { toneLevel, getMessage } = useTone();
 
   const [runKey, setRunKey] = useState(0);
   const [live, setLive] = useState({ score: 0, elapsedMs: 0, started: false });
   const [result, setResult] = useState(null);
+  // null = not yet known (server PR check still in flight, or this was a
+  // crash and it's simply irrelevant). Only ever set for non-crash results.
+  const [isPersonalBest, setIsPersonalBest] = useState(null);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'failed'
 
   const handleTick = useCallback((stats) => {
@@ -26,6 +32,7 @@ export function PlayPage() {
   const handleRunEnd = useCallback(
     (payload) => {
       setResult(payload);
+      setIsPersonalBest(null);
       setSaveStatus('saving');
       submitRun({
         trackId,
@@ -33,8 +40,19 @@ export function PlayPage() {
         score: payload.score,
         stopAtMs: payload.stopAtMs,
       })
-        .then(() => setSaveStatus('saved'))
-        .catch(() => setSaveStatus('failed'));
+        .then((data) => {
+          setSaveStatus('saved');
+          // Crash messaging never distinguishes PR/non-PR, so there's no
+          // point tracking it there — and skipping the update means this
+          // resolving late can't retroactively change an already-shown
+          // crash message (see resultMessage below).
+          if (!payload.crashed) setIsPersonalBest(Boolean(data.isPersonalBest));
+        })
+        .catch(() => {
+          setSaveStatus('failed');
+          // Couldn't verify against the server, so don't claim a PR.
+          if (!payload.crashed) setIsPersonalBest(false);
+        });
     },
     [trackId],
   );
@@ -45,10 +63,24 @@ export function PlayPage() {
 
   const playAgain = useCallback(() => {
     setResult(null);
+    setIsPersonalBest(null);
     setSaveStatus(null);
     setLive({ score: 0, elapsedMs: 0, started: false });
     setRunKey((key) => key + 1);
   }, []);
+
+  // Picked once per result (keyed on the `result`/`isPersonalBest` state
+  // identities, not recomputed on every unrelated re-render like
+  // saveStatus flipping to 'saved') so the chosen variant stays put for as
+  // long as this result is showing, instead of re-rolling on every render.
+  const resultMessage = useMemo(() => {
+    if (!result) return null;
+    const vars = { score: result.score, time: (result.durationMs / 1000).toFixed(1) };
+    if (result.crashed) return getMessage(CRASH_MESSAGES, vars);
+    if (isPersonalBest == null) return null; // still waiting on the server's PR check
+    return getMessage(isPersonalBest ? PR_MESSAGES : NOT_PR_MESSAGES, vars);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pick once per result, not on every getMessage re-creation
+  }, [result, isPersonalBest]);
 
   // Escape ends the run without reaching for the mouse — the game is
   // otherwise entirely keyboard-driven (Arrow keys). Scoped to `!result` so
@@ -112,6 +144,7 @@ export function PlayPage() {
           ref={gameCanvasRef}
           key={`${track.id}-${runKey}`}
           track={track}
+          toneLevel={toneLevel}
           onTick={handleTick}
           onEnd={handleRunEnd}
         />
@@ -125,11 +158,7 @@ export function PlayPage() {
               : 'play-page__result play-page__result--ended'
           }
         >
-          <p className="play-page__result-headline">
-            {result.crashed
-              ? `Crashed! Final score ${result.score} (${(result.durationMs / 1000).toFixed(1)}s survived)`
-              : `Run ended! Final score ${result.score} (${(result.durationMs / 1000).toFixed(1)}s)`}
-          </p>
+          {resultMessage && <p className="play-page__result-headline">{resultMessage}</p>}
           {saveStatus === 'saving' && <p className="play-page__save-status">Saving…</p>}
           {saveStatus === 'failed' && (
             <p className="play-page__save-status">Could not save this run — score not recorded.</p>

@@ -17,6 +17,7 @@ export async function requireAuth(req, res, next) {
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      toneLevel: user.toneLevel,
     };
     next();
   } catch {

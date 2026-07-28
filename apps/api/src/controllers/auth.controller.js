@@ -5,6 +5,9 @@ import * as authService from '../services/auth.service.js';
 // same constraints as signup, rather than a second, possibly-drifting rule.
 const displayNameSchema = z.string().min(1).max(50);
 const avatarUrlSchema = z.string().min(1);
+// Mirrors apps/web/src/content/messages.js's TONE_LEVELS and the Prisma
+// ToneLevel enum — kept in sync by hand across the workspace boundary.
+const toneLevelSchema = z.enum(['professional', 'knightly', 'hypeMan', 'heckler', 'outlaw']);
 
 export const signupSchema = z.object({
   email: z.string().email(),
@@ -28,17 +31,20 @@ export const resetPasswordSchema = z.object({
 });
 
 // No email field on purpose — email stays fixed to what was verified at
-// signup (the @dirtcar.com + one-account-per-email design). Both fields
+// signup (the @dirtcar.com + one-account-per-email design). All fields
 // are optional individually (PATCH semantics), but at least one must be
 // present, or there's nothing to update.
 export const updateProfileSchema = z
   .object({
     displayName: displayNameSchema.optional(),
     avatarUrl: avatarUrlSchema.optional(),
+    toneLevel: toneLevelSchema.optional(),
   })
-  .refine((data) => data.displayName !== undefined || data.avatarUrl !== undefined, {
-    message: 'At least one of displayName or avatarUrl is required',
-  });
+  .refine(
+    (data) =>
+      data.displayName !== undefined || data.avatarUrl !== undefined || data.toneLevel !== undefined,
+    { message: 'At least one of displayName, avatarUrl, or toneLevel is required' },
+  );
 
 // Dev: frontend and API are same-site (Vite proxies /auth to the API), so
 // Lax + non-Secure works over plain HTTP. Production: Vercel (frontend) and

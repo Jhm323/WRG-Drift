@@ -14,13 +14,15 @@ export function SignupForm() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [emailSendFailed, setEmailSendFailed] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await signup({ email, password, displayName, avatarUrl });
+      const result = await signup({ email, password, displayName, avatarUrl });
+      setEmailSendFailed(Boolean(result?.user?.emailSendFailed));
       setDone(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
@@ -32,8 +34,20 @@ export function SignupForm() {
   if (done) {
     return (
       <div className="signup-form signup-form--done">
-        <h1 className="signup-form__title">Check your inbox</h1>
-        <p>We sent a verification link to {email}. Verify it, then log in.</p>
+        {emailSendFailed ? (
+          <>
+            <h1 className="signup-form__title">Account created</h1>
+            <p>
+              Your account was created, but we couldn&rsquo;t send the verification email to{' '}
+              {email}. Try logging in — you&rsquo;ll get the option to resend it from there.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="signup-form__title">Check your inbox</h1>
+            <p>We sent a verification link to {email}. Verify it, then log in.</p>
+          </>
+        )}
         <p className="signup-form__footer">
           <Link to="/login">Back to login</Link>
         </p>

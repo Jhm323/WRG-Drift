@@ -25,6 +25,10 @@ export const forgotPasswordSchema = z.object({
   email: z.string().email(),
 });
 
+export const resendVerificationSchema = z.object({
+  email: z.string().email(),
+});
+
 export const resetPasswordSchema = z.object({
   token: z.string().min(1),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
@@ -95,6 +99,13 @@ export function logout(req, res) {
 export async function forgotPassword(req, res) {
   await authService.requestPasswordReset(req.body.email);
   res.json({ message: 'If that email exists, a reset link has been sent.' });
+}
+
+// Same response either way regardless of whether the account exists or is
+// already verified — see resendVerificationEmail's own comment for why.
+export async function resendVerification(req, res) {
+  await authService.resendVerificationEmail(req.body.email);
+  res.json({ message: 'If that account exists and needs verification, a new link has been sent.' });
 }
 
 export async function resetPassword(req, res) {

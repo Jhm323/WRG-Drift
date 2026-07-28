@@ -50,9 +50,37 @@ export async function signup({ email, password, displayName, avatarUrl }) {
     throw error;
   }
 
-  await sendVerificationEmail({ to: user.email, token: verificationToken });
+  // The account already exists at this point regardless of what happens
+  // next. Letting a send failure here throw would produce a bare 500 that
+  // misrepresents a partially-successful signup as a total failure — the
+  // account is real, but the client would have no way to know that: a retry
+  // 409s ("already exists"), and without /auth/resend-verification below,
+  // there'd be no way to ever get a working link. Report the failure via the
+  // response instead, so the client can point the user at the resend flow.
+  let emailSendFailed = false;
+  try {
+    await sendVerificationEmail({ to: user.email, token: verificationToken });
+  } catch (error) {
+    console.error(`[signup] verification email failed to send for ${user.email}`, error);
+    emailSendFailed = true;
+  }
 
-  return { id: user.id, email: user.email, displayName: user.displayName };
+  return { id: user.id, email: user.email, displayName: user.displayName, emailSendFailed };
+}
+
+// Never reveal whether an email has an account, or whether that account is
+// already verified — same non-leaking pattern as requestPasswordReset below.
+// Rotates the token (rather than reusing whatever was generated at signup)
+// so an old link that already failed to send, or was never opened, isn't
+// the only one that will ever work.
+export async function resendVerificationEmail(email) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user || user.emailVerified) return;
+
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  await prisma.user.update({ where: { id: user.id }, data: { verificationToken } });
+
+  await sendVerificationEmail({ to: user.email, token: verificationToken });
 }
 
 export async function verifyEmail(token) {

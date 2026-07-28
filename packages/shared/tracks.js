@@ -1,6 +1,11 @@
-// Parametric generators for the 3 track shapes. Mirrors the math in
-// apps/api/prisma/seed.js so the client-rendered track matches the shape
-// stored server-side under the same trackId — same formulas, same output.
+// Single source of truth for track geometry + metadata — imported by both
+// apps/web/src/game/tracks/index.js (the client, which plays against this
+// shape directly) and apps/api/prisma/seed.js (which persists it into the
+// `tracks` DB row's `config` JSON column). Previously these were two
+// independently hand-maintained copies, and drifted out of sync repeatedly
+// in one session (ribbonWidth, wrapAtEnd, the Figure-8 geometry rewrite) —
+// moving the numbers here once makes that class of bug structurally
+// impossible instead of a "remember to update both files" convention.
 
 export function ovalGeometry() {
   const cx = 400;
@@ -69,6 +74,7 @@ export function switchbackCanyonGeometry() {
   const legLength = 90;
   const switchbackCount = 8;
 
+  // Zigzag hairpin path climbing up a canyon wall.
   const anchors = [{ x: startX, y: startY }];
   let direction = 1;
   for (let i = 0; i < switchbackCount; i += 1) {
@@ -89,3 +95,33 @@ export function switchbackCanyonGeometry() {
 
   return { curve, ribbonWidth: 105 };
 }
+
+export const ovalLoopTrack = {
+  id: 'oval-loop',
+  name: 'Oval Loop',
+  difficulty: 'easy',
+  pointsMultiplier: 1.0,
+  ...ovalGeometry(),
+};
+
+export const figureEightTrack = {
+  id: 'figure-8',
+  name: 'Figure-8',
+  difficulty: 'medium',
+  pointsMultiplier: 1.5,
+  ...figureEightGeometry(),
+};
+
+export const switchbackCanyonTrack = {
+  id: 'switchback-canyon',
+  name: 'Switchback Canyon',
+  difficulty: 'hard',
+  pointsMultiplier: 2.0,
+  // Non-looping path: the run continues past the final waypoint by
+  // teleporting back to the start instead of ending, so a run doesn't
+  // artificially crash just because the drivable polyline ran out.
+  wrapAtEnd: true,
+  ...switchbackCanyonGeometry(),
+};
+
+export const TRACKS = [ovalLoopTrack, figureEightTrack, switchbackCanyonTrack];

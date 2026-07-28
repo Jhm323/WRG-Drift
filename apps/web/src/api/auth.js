@@ -40,6 +40,13 @@ export function forgotPassword({ email }) {
   });
 }
 
+export function resendVerification({ email }) {
+  return apiFetch('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 export function resetPassword({ token, newPassword }) {
   return apiFetch('/auth/reset-password', {
     method: 'POST',

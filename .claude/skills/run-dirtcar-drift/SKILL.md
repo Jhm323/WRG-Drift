@@ -131,14 +131,17 @@ Vitest/Supertest for the API, Playwright e2e — hasn't been built out).
 - **`npx prisma dev` (Prisma's bundled local Postgres) throws `Dynamic
 require of "assert" is not supported`** under this Node version. Use
   Homebrew Postgres (see Prerequisites) instead — don't debug this path.
-- **`apps/web/src/game/tracks/geometry.js` and `apps/api/prisma/seed.js`
-  must stay in sync** — both generate the same centerline curve + ribbon
-  width per track from identical formulas. The client plays against
-  `geometry.js`; the server's anti-cheat replay (`apps/api/src/services/scores.service.js`)
-  replays against whatever's stored in the `tracks.config` column, which
-  `seed.js` populates. If you change a track's curve or `ribbonWidth`,
-  update both files and re-seed (`npm run prisma:seed` in `apps/api`), or
-  the client and server will disagree on where the track edge is.
+- **Track geometry (curve + `ribbonWidth` + `wrapAtEnd`) lives in one place:
+  `packages/shared/tracks.js`.** Both the client (`apps/web/src/game/tracks/index.js`)
+  and the server's anti-cheat replay (via `apps/api/prisma/seed.js`, which
+  populates the `tracks.config` column that `scores.service.js` replays
+  against) import the same `ovalGeometry`/`figureEightGeometry`/
+  `switchbackCanyonGeometry`/`ovalLoopTrack`/etc. from there — this used to
+  be two independently hand-maintained copies that drifted out of sync
+  repeatedly; it's now structurally one source. If you change a track's
+  curve or `ribbonWidth`, edit `packages/shared/tracks.js` and re-seed
+  (`npm run prisma:seed` in `apps/api`) so the DB picks up the change —
+  there's no second file to remember to update anymore.
 - **Prisma 7 requires a driver adapter.** There's no bare
   `DATABASE_URL` client anymore — `apps/api/src/lib/prisma.js` wires
   `@prisma/adapter-pg` explicitly. If you ever regenerate the Prisma
